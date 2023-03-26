@@ -104,6 +104,7 @@ You should have received a copy of the GNU General Public License along with thi
 ## Copyright
 
 Copyright © 2023 Daniel S. (GitHub: periaate)
+
 All rights reserved.
 
 ## Authors
