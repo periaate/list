@@ -103,12 +103,9 @@ You should have received a copy of the GNU General Public License along with thi
 
 ## Copyright
 
-Copyright © 2023 Daniel S. (GitHub: periaate)
+Copyright © 2023 Daniel Saury
 
 All rights reserved.
-
-## Authors
-- Daniel S. (GitHub: periaate)
   
 ## Acknowledgements
 
