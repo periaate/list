@@ -58,14 +58,14 @@ type patterns struct {
 }
 
 func main() {
-	_, err := gf.Parse(&opts)
+	args, err := gf.Parse(&opts)
 	if err != nil {
 		log.Fatalln("Error parsing flags:", err)
 	}
 
 	// Get filepath
-	if len(os.Args) > 1 && os.Args[1][0] != '-' {
-		fp = os.Args[1]
+	if len(args) > 0 {
+		fp = args[0]
 	}
 
 	// Validate filepath
