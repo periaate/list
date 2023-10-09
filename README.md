@@ -53,11 +53,11 @@ The `patterns.yml` file contains predefined file extension patterns, categorized
 Here is an excerpt from the default `patterns.yml`.
 ```yml
 extensions:
-	image:
-		- .jpg
-		- .png
-		- # ... other image extensions
-	# ... other categories
+    image:
+        - .jpg
+        - .png
+        - # ... other image extensions
+    # ... other categories
 ```
 
 You may modify or add patterns into it which will be included on recompilation. There is currently no way to have dynamically configured patterns, although this is a planned feature.
