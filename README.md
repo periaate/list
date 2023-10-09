@@ -1,4 +1,4 @@
-# ls-go: An Advanced Filesystem Listing Tool Written in Go 
+# ls-go: Filesystem listing simplified.
 ## Overview 
 `ls-go` is not a replacement for the standard `ls` command. It is designed as a simplified CLI tool for specific operations concerning file and directory listing, with an added layer of pattern matching functionality. Files are ordered by name in descending order by default, with options for ordering by modification time and ascending order.
 
