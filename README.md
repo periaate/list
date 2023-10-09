@@ -1,112 +1,95 @@
-# ls-go
-A 🚀 Blazing Fast 🚀 Directory Listing Utility for the Command Line
+# ls-go: An Advanced Filesystem Listing Tool Written in Go 
+## Overview 
+`ls-go` is not a replacement for the standard `ls` command. It is designed as a simplified CLI tool for specific operations concerning file and directory listing, with an added layer of pattern matching functionality. Files are ordered by name in descending order by default, with options for ordering by modification time and ascending order.
 
-![GitHub contributors](https://img.shields.io/github/contributors/periaate/ls-go) ![GitHub last commit](https://img.shields.io/github/last-commit/periaate/ls-go) ![GitHub Repo stars](https://img.shields.io/github/stars/periaate/ls-go) ![GitHub forks](https://img.shields.io/github/forks/periaate/ls-go) ![GitHub watchers](https://img.shields.io/github/watchers/periaate/ls-go) ![GitHub](https://img.shields.io/github/license/periaate/ls-go) ![GitHub issues](https://img.shields.io/github/issues/periaate/ls-go) ![GitHub all releases](https://img.shields.io/github/downloads/periaate/ls-go/total) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/periaate/ls-go) ![GitHub repo file count](https://img.shields.io/github/directory-file-count/periaate/ls-go) ![Lines of code](https://img.shields.io/tokei/lines/github/periaate/ls-go) ![GitHub language count](https://img.shields.io/github/languages/count/periaate/ls-go) ![GitHub Discussions](https://img.shields.io/github/discussions/periaate/ls-go) ![GitHub followers](https://img.shields.io/github/followers/periaate)
+*Especially for PowerShell, where the `ls` output may not be pipeable to certain programs by default.*
+## Features
+- List files in a directory, showing their relative locations.
+- Recursively list files in subdirectories.
+- Include and exclude files based on pre-defined extension patterns.
+- Sort files by either name or modified time, in ascending or descending order.
+## Building from source
+1. Traverse to `src` under the `$GOPATH`.
+For Linux:
+```bash
+cd ~/go/src/
+```
+For PowerShell:
+```PowerShell
+cd $HOME\go\src\
+```
 
-## Overview
-Introducing the Blazing Fast Directory Lister, a high-performance, user-friendly, and cross-platform command-line utility for effortlessly listing files and directories on your computer! Built with cutting-edge technology, this utility is designed to make your life easier and more productive! 💪
+2. Clone the repository there:
+```bash
+git clone https://github.com/periaate/ls-go
+```
 
-## Installation
-The Blazing Fast Directory Lister is available for all major platforms, including Windows, macOS, and Linux. Follow the step-by-step installation examples below for your platform:
+3. `cd` into the project folder:
+```bash
+cd ls-go
+```
 
-### Windows
-Install the Go compiler: Download and install the latest version of Go from the official website here.
+4. Build the project:
+```bash
+go build main.go
+```
 
-Clone the Blazing Fast Directory Lister repository or download the source code as a ZIP file and extract it to your preferred location.
+5. (Optional) Rename binary `main` or `main.exe` into `ls-go` or `ls-go.exe` and include the binary in your `path`.
 
-Open a command prompt (cmd) or PowerShell and navigate to the directory containing the source code.
+## Command-line Flags
 
-Compile the program by running the following command:
+|Flag|Short|Long|Description|
+|---|---|---|---|
+|Recurse|`-r`|`--recurse`|Recursively list files in subdirectories|
+|Ascending|`-A`|`--ascending`|Results will be ordered in ascending order. Descending by default.|
+|Date|`-d`|`--date`|Results will be ordered by modified time. Ordered by filename by default.|
+|Include|`-i`|`--include`|Include only items fitting a given extension pattern. Use ',' for multiple patterns.|
+|Exclude|`-e`|`--exclude`|Exclude items fitting a given extension pattern. Use ',' for multiple patterns.|
 
-`go build -o ls-go.exe`
+## Pattern File (`patterns.yml`)
 
-Add the compiled executable to your system PATH:
+The `patterns.yml` file contains predefined file extension patterns, categorized under various types like `image`, `video`, `audio`, `data`, and `document`.
 
-**For cmd:**
-a. Open the "Environment Variables" settings by searching for "Edit the system environment variables" in the Start menu.
+Here is an excerpt from the default `patterns.yml`.
+```yml
+extensions:
+	image:
+		- .jpg
+		- .png
+		- # ... other image extensions
+	# ... other categories
+```
 
-b. In the "System Variables" section, find the variable named "Path", select it, and click the "Edit..." button.
+You may modify or add patterns into it which will be included on recompilation. There is currently no way to have dynamically configured patterns, although this is a planned feature.
 
-c. Click the "New" button and add the path to the directory containing the `ls-go.exe` executable.
+## Usage Examples
 
-**For PowerShell:**
-a. Open PowerShell and run the following command (replacing "path\to\ls-go" with the actual path to the directory containing the `ls-go.exe` executable):
+1. List all files in the current directory.
+```bash
+ls-go
+```
 
-`[Environment]::SetEnvironmentVariable("Path", $env:Path + ";path\to\ls-go", "User")`
-Close and reopen your command prompt or PowerShell to apply the changes.
+2. Recursively list all files.
+```bash
+ls-go -r
+```
 
-You can now use the Blazing Fast Directory lister by typing `ls-go` in your command prompt or PowerShell!
+3. List files in ascending order.
+```bash
+ls-go -A
+```
 
-### macOS and Linux
-Install the Go compiler: Download and install the latest version of Go from the official website [here](https://go.dev/doc/install).
+4. List files sorted by modified date.
+```bash
+ls-go -d
+```
 
-Clone the Blazing Fast Directory Lister repository or download the source code as a ZIP file and extract it to your preferred location.
+5. Include only image and document files.
+```bash
+ls-go -i image,document
+```
 
-Open a terminal and navigate to the directory containing the source code.
-
-Compile the program by running the following command:
-
-`go build -o ls-go`
-Add the compiled executable to your system PATH:
-
-**a.** Open your shell configuration file (e.g., `~/.bashrc` for bash or `~/.zshrc` for zsh) in a text editor.
-
-**b.** Add the following line at the end of the file (replacing "path/to/ls-go" with the actual path to the directory containing the ls-go executable):
-
-`export PATH=$PATH:path/to/ls-go`
-**c.** Save the file and close the text editor.
-
-Restart your terminal or run `source ~/.bashrc` (for bash) or `source ~/.zshrc` (for zsh) to apply the changes.
-
-You can now use the Blazing Fast Directory Lister by typing `ls-go` in your terminal!
-
-## Usage
-The Blazing Fast Directory Lister is incredibly simple to use! Just follow the examples below to get started:
-
-To list the files in the current directory:
-
-`ls-go`
-
-To list the files in a specific directory:
-
-`ls-go /path/to/directory`
-
-
-- To list the files in the current directory and its subdirectories (recursively):
-
-`ls-go -r`
-
-
-- To list the files in a specific directory and its subdirectories (recursively):
-
-`ls-go /path/to/directory -r`
-
-
-- To list the files in a specific directory and its subdirectories (recursively) using alternative flag options:
-
-`ls-go /path/to/directory --recurse`
-
-or
-
-`ls-go /path/to/directory -R`
-
-
-Feel free to mix and match the directory paths and flags as needed. The Blazing Fast Directory Lister will handle it all with ease and grace! 🌟
-
-## License
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-## Copyright
-
-Copyright © 2023 Daniel Saury
-
-All rights reserved.
-  
-## Acknowledgements
-
-A big shoutout to the amazing Go community and the developers who have contributed to the Go ecosystem. Your hard work and dedication make tools like the Blazing Fast Directory Lister possible. Thank you! 🚀
+6. Exclude video files.
+```bash
+ls-go -e video
+```
