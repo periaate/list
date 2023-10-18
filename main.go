@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -35,12 +36,13 @@ var (
 type SortableFiles []sortableFile
 
 func (s SortableFiles) Len() int           { return len(s) }
-func (s SortableFiles) Less(i, j int) bool { return s[i].Fp < s[j].Fp }
+func (s SortableFiles) Less(i, j int) bool { return s[i].sortable < s[j].sortable }
 func (s SortableFiles) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type sortableFile struct {
-	Fp    string // Filepath
-	Value int64  // Countable value to be used by counting sort. Populated by unix timestamp.
+	Fp       string // Filepath
+	sortable string
+	Value    int64 // Countable value to be used by counting sort. Populated by unix timestamp.
 }
 
 // Todo: Absolute path flag, Custom pattern files
@@ -95,9 +97,11 @@ func main() {
 // getFiles attempts to populate the files array using the existing configurations.
 func getFiles(files *SortableFiles) {
 	// perEntry is ran on each file to construct sortableFile and check if it matches any patterns.
-	perEntry := func(d fs.DirEntry, path string) {
+	perEntry := func(pre, base string, d fs.DirEntry) {
+		fp := filepath.ToSlash(path.Join(pre, base))
 		file := sortableFile{
-			Fp: filepath.Join(path, d.Name()),
+			Fp:       fp,
+			sortable: strings.ToLower(fp),
 		}
 
 		if opts.Date {
@@ -135,15 +139,24 @@ func getFiles(files *SortableFiles) {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		for _, e := range res {
-			perEntry(e, fp)
+		for _, d := range res {
+			perEntry(fp, d.Name(), d)
 		}
 	} else {
-		err := fs.WalkDir(os.DirFS(fp), fp, func(path string, e fs.DirEntry, _ error) error {
-			if e.IsDir() {
+		absfp, err := filepath.Abs(fp)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		pre := fp
+
+		err = fs.WalkDir(os.DirFS(absfp), ".", func(path string, d fs.DirEntry, err error) error {
+			if d == nil {
 				return nil
 			}
-			perEntry(e, path)
+			if d.IsDir() {
+				return nil
+			}
+			perEntry(pre, path, d)
 			return nil
 		})
 		if err != nil {
