@@ -41,6 +41,7 @@ go build main.go
 |Flag|Short|Long|Description|
 |---|---|---|---|
 |Recurse|`-r`|`--recurse`|Recursively list files in subdirectories|
+|Exclusive recurse|`-x`|`--xrecurse`|Exclusively list files in subdirectories|
 |Ascending|`-A`|`--ascending`|Results will be ordered in ascending order. Descending by default.|
 |Date|`-d`|`--date`|Results will be ordered by modified time. Ordered by filename by default.|
 |Include|`-i`|`--include`|Include only items fitting a given extension pattern. Use ',' for multiple patterns.|

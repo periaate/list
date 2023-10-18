@@ -47,9 +47,10 @@ type sortableFile struct {
 
 // Todo: Absolute path flag, Custom pattern files
 type Options struct {
-	Recurse   bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
-	Ascending bool `short:"A" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
-	Date      bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
+	Recurse            bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
+	ExclusiveRecursion bool `short:"x" long:"xrecurse" description:"Exclusively list files in subdirectories"`
+	Ascending          bool `short:"A" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
 	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will excldue items fitting the pattern. Use ',' to define multiple patterns."`
@@ -134,7 +135,33 @@ func getFiles(files *SortableFiles) {
 	}
 
 	// Get files
-	if !opts.Recurse {
+	if opts.ExclusiveRecursion {
+		fmt.Println("hello")
+		res, err := os.ReadDir(fp)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		dirs := []fs.DirEntry{}
+		for _, d := range res {
+			if d.IsDir() {
+				dirs = append(dirs, d)
+			}
+		}
+		fn := func(pre string) fs.WalkDirFunc {
+			return func(path string, d fs.DirEntry, err error) error {
+				if d == nil || err != nil {
+					return err
+				}
+				perEntry(pre, path, d)
+				return nil
+			}
+		}
+
+		for _, dir := range dirs {
+			recurse(filepath.Join(fp, dir.Name()), fn)
+		}
+
+	} else if !opts.Recurse {
 		res, err := os.ReadDir(fp)
 		if err != nil {
 			log.Fatalln(err)
@@ -143,25 +170,30 @@ func getFiles(files *SortableFiles) {
 			perEntry(fp, d.Name(), d)
 		}
 	} else {
-		absfp, err := filepath.Abs(fp)
-		if err != nil {
-			log.Fatalln(err)
+		fn := func(pre string) fs.WalkDirFunc {
+			return func(path string, d fs.DirEntry, err error) error {
+				if d == nil || err != nil {
+					return err
+				}
+				perEntry(pre, path, d)
+				return nil
+			}
 		}
-		pre := fp
 
-		err = fs.WalkDir(os.DirFS(absfp), ".", func(path string, d fs.DirEntry, err error) error {
-			if d == nil {
-				return nil
-			}
-			if d.IsDir() {
-				return nil
-			}
-			perEntry(pre, path, d)
-			return nil
-		})
-		if err != nil {
-			log.Fatalln(err)
-		}
+		recurse(fp, fn)
+	}
+}
+
+func recurse(fp string, fn func(string) fs.WalkDirFunc) {
+	absfp, err := filepath.Abs(fp)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	pre := fp
+
+	err = fs.WalkDir(os.DirFS(absfp), ".", fn(pre))
+	if err != nil {
+		log.Fatalln(err)
 	}
 }
 
