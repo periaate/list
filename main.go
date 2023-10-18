@@ -47,9 +47,10 @@ type sortableFile struct {
 
 // Todo: Absolute path flag, Custom pattern files
 type Options struct {
+	Absolute           bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
 	Recurse            bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
 	ExclusiveRecursion bool `short:"x" long:"xrecurse" description:"Exclusively list files in subdirectories"`
-	Ascending          bool `short:"A" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Ascending          bool `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
@@ -136,7 +137,6 @@ func getFiles(files *SortableFiles) {
 
 	// Get files
 	if opts.ExclusiveRecursion {
-		fmt.Println("hello")
 		res, err := os.ReadDir(fp)
 		if err != nil {
 			log.Fatalln(err)
@@ -204,7 +204,12 @@ func printResults(files SortableFiles) {
 		if opts.Ascending {
 			k = len(files) - 1 - i
 		}
-		fmt.Println(files[k].Fp)
+		fp = files[k].Fp
+		if opts.Absolute {
+			fp, _ = filepath.Abs(fp)
+			fp = filepath.ToSlash(fp)
+		}
+		fmt.Println(fp)
 	}
 }
 

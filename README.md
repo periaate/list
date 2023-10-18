@@ -40,9 +40,10 @@ go build main.go
 
 |Flag|Short|Long|Description|
 |---|---|---|---|
+|Absolute|`-A`|`--absolute`|Paths are formatted to be absolute. Relative by default.|
 |Recurse|`-r`|`--recurse`|Recursively list files in subdirectories|
 |Exclusive recurse|`-x`|`--xrecurse`|Exclusively list files in subdirectories|
-|Ascending|`-A`|`--ascending`|Results will be ordered in ascending order. Descending by default.|
+|Ascending|`-a`|`--ascending`|Results will be ordered in ascending order. Descending by default.|
 |Date|`-d`|`--date`|Results will be ordered by modified time. Ordered by filename by default.|
 |Include|`-i`|`--include`|Include only items fitting a given extension pattern. Use ',' for multiple patterns.|
 |Exclude|`-e`|`--exclude`|Exclude items fitting a given extension pattern. Use ',' for multiple patterns.|
@@ -77,7 +78,7 @@ ls-go -r
 
 3. List files in ascending order.
 ```bash
-ls-go -A
+ls-go -a
 ```
 
 4. List files sorted by modified date.
@@ -93,4 +94,14 @@ ls-go -i image,document
 6. Exclude video files.
 ```bash
 ls-go -e video
+```
+
+7. List with absolute paths.
+```bash
+ls-go -A
+```
+
+8. Only list files in subdirectories.
+```bash
+ls-go -x
 ```
