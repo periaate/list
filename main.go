@@ -10,7 +10,9 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	gf "github.com/jessevdk/go-flags"
 	"gopkg.in/yaml.v3"
@@ -36,8 +38,8 @@ var (
 type SortableFiles []sortableFile
 
 func (s SortableFiles) Len() int           { return len(s) }
-func (s SortableFiles) Less(i, j int) bool { return s[i].sortable < s[j].sortable }
 func (s SortableFiles) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SortableFiles) Less(i, j int) bool { return naturalLess(s[i].sortable, s[j].sortable) }
 
 type sortableFile struct {
 	Fp       string // Filepath
@@ -281,4 +283,33 @@ func parsePatterns() {
 			}
 		}
 	}
+}
+
+// naturalLess compares two strings and returns true if a < b in natural order.
+func naturalLess(a, b string) bool {
+	var ai, bi int
+	for ai < len(a) && bi < len(b) {
+		ach, bch := rune(a[ai]), rune(b[bi])
+		if unicode.IsDigit(ach) && unicode.IsDigit(bch) {
+			var anum, bnum string
+			for ; ai < len(a) && unicode.IsDigit(rune(a[ai])); ai++ {
+				anum += string(a[ai])
+			}
+			for ; bi < len(b) && unicode.IsDigit(rune(b[bi])); bi++ {
+				bnum += string(b[bi])
+			}
+			an, _ := strconv.Atoi(anum)
+			bn, _ := strconv.Atoi(bnum)
+			if an != bn {
+				return an < bn
+			}
+		} else {
+			if ach != bch {
+				return ach < bch
+			}
+			ai++
+			bi++
+		}
+	}
+	return len(a) < len(b)
 }

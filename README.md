@@ -1,6 +1,6 @@
-# ls-go: Filesystem listing simplified.
+# list: Filesystem listing simplified.
 ## Overview 
-`ls-go` is not a replacement for the standard `ls` command. It is designed as a simplified CLI tool for specific operations concerning file and directory listing, with an added layer of pattern matching functionality. Files are ordered by name in descending order by default, with options for ordering by modification time and ascending order.
+`list` is not a replacement for the standard `ls` command. It is designed as a simplified CLI tool for specific operations concerning file and directory listing, with an added layer of pattern matching functionality. Files are ordered by name in descending order by default, with options for ordering by modification time and ascending order.
 
 *Especially for PowerShell, where the `ls` output may not be pipeable to certain programs by default.*
 ## Features
@@ -21,12 +21,12 @@ cd $HOME\go\src\
 
 2. Clone the repository there:
 ```bash
-git clone https://github.com/periaate/ls-go
+git clone https://github.com/periaate/list
 ```
 
 3. `cd` into the project folder:
 ```bash
-cd ls-go
+cd list
 ```
 
 4. Build the project:
@@ -34,7 +34,7 @@ cd ls-go
 go build main.go
 ```
 
-5. (Optional) Rename binary `main` or `main.exe` into `ls-go` or `ls-go.exe` and include the binary in your `path`.
+5. (Optional) Rename binary `main` or `main.exe` into `list` or `list.exe` and include the binary in your `path`.
 
 ## Command-line Flags
 
@@ -68,40 +68,40 @@ You may modify or add patterns into it which will be included on recompilation. 
 
 1. List all files in the current directory.
 ```bash
-ls-go
+list
 ```
 
 2. Recursively list all files.
 ```bash
-ls-go -r
+list -r
 ```
 
 3. List files in ascending order.
 ```bash
-ls-go -a
+list -a
 ```
 
 4. List files sorted by modified date.
 ```bash
-ls-go -d
+list -d
 ```
 
 5. Include only image and document files.
 ```bash
-ls-go -i image,document
+list -i image,document
 ```
 
 6. Exclude video files.
 ```bash
-ls-go -e video
+list -e video
 ```
 
 7. List with absolute paths.
 ```bash
-ls-go -A
+list -A
 ```
 
 8. Only list files in subdirectories.
 ```bash
-ls-go -x
+list -x
 ```

@@ -1,4 +1,4 @@
-module ls-go
+module list
 
 go 1.21
 
