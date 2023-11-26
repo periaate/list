@@ -40,13 +40,15 @@ go build main.go
 
 |Flag|Short|Long|Description|
 |---|---|---|---|
-|Absolute|`-A`|`--absolute`|Paths are formatted to be absolute. Relative by default.|
+|Absolute|`-A`|`--absolute`|Format paths to be absolute. Relative by default.|
 |Recurse|`-r`|`--recurse`|Recursively list files in subdirectories|
 |Exclusive recurse|`-x`|`--xrecurse`|Exclusively list files in subdirectories|
-|Ascending|`-a`|`--ascending`|Results will be ordered in ascending order. Descending by default.|
-|Date|`-d`|`--date`|Results will be ordered by modified time. Ordered by filename by default.|
+|Ascending|`-a`|`--ascending`|Order results in ascending order. Descending by default.|
+|Date|`-d`|`--date`|Order results by modified time. Ordered by filename by default.|
+|Query|`-q`|`--query`|Return the most similar file to the query.|
 |Include|`-i`|`--include`|Include only items fitting a given extension pattern. Use ',' for multiple patterns.|
 |Exclude|`-e`|`--exclude`|Exclude items fitting a given extension pattern. Use ',' for multiple patterns.|
+
 
 ## Pattern File (`patterns.yml`)
 
