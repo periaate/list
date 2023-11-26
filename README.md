@@ -1,13 +1,14 @@
-# list: Filesystem listing simplified.
+# list: Filesystem listing program
 ## Overview 
-`list` is not a replacement for the standard `ls` command. It is designed as a simplified CLI tool for specific operations concerning file and directory listing, with an added layer of pattern matching functionality. Files are ordered by name in descending order by default, with options for ordering by modification time and ascending order.
+`list` is a command-line utility that offers extended functionality for file and directory listing, allowing for some complex behavior while remaining simple to use. It primarily enhances file system navigation with features file filtering based on extension patterns or built-in fuzzy string matching and sorting.
 
-*Especially for PowerShell, where the `ls` output may not be pipeable to certain programs by default.*
 ## Features
-- List files in a directory, showing their relative locations.
-- Recursively list files in subdirectories.
-- Include and exclude files based on pre-defined extension patterns.
-- Sort files by either name or modified time, in ascending or descending order.
+- **File Listing**: Displays files in directories, with options for absolute or relative path formats.
+- **Recursive Directory Listing**: Lists files in subdirectories, with an option for exclusive recursion into subdirectories.
+- **Sorting**: Sort files by name or modified time, in either ascending or descending order.
+- **Pattern Matching**: Includes or excludes files based on specified extension patterns.
+- **Fuzzy String Matching**: Offers fuzzy string matching, either listing items sorted by how closely they match the query, or selecting the item which matched the closest to the query.
+
 ## Building from source
 1. Traverse to `src` under the `$GOPATH`.
 For Linux:
@@ -34,7 +35,7 @@ cd list
 go build main.go
 ```
 
-5. (Optional) Rename binary `main` or `main.exe` into `list` or `list.exe` and include the binary in your `path`.
+5. (Optional) Rename binary `main` or `main.exe` into `list` or `list.exe` (or any other name) and include the binary in your `path`.
 
 ## Command-line Flags
 
