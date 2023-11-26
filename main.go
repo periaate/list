@@ -55,8 +55,7 @@ type sortableFile struct {
 	Fp           string  // Filepath
 	sortableName string  // Filepath in lowercase for sorting
 	Value        int64   // Countable value to be used by counting sort. Populated by unix timestamp.
-	distance     float64 // Levenshtein distance between the query and the filepath
-	score        float64 // Score for how well the filepath matches the query
+	score        float64 // Score for how well the string matches the query
 }
 
 // TODO: Custom pattern files
@@ -67,7 +66,8 @@ type Options struct {
 	Ascending          bool `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 
-	Query string `short:"q" long:"query" description:"Returns the most similar file to the query."`
+	Select string `short:"S" long:"select" description:"Selects the item which matches the query the best."`
+	Query  string `short:"Q" long:"query" description:"Returns items ordered by their similarity to the query."`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
 	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will excldue items fitting the pattern. Use ',' to define multiple patterns."`
@@ -109,12 +109,15 @@ func main() {
 		sort.Sort(files)
 	}
 
-	if opts.Query == "" {
+	switch {
+	case opts.Select != "":
+		printSelectResult(files)
+	case opts.Query != "":
+		sortByScore(files)
+		fallthrough
+	default:
 		printResults(files)
-		return
 	}
-
-	printQueryResult(files)
 }
 
 // getFiles attempts to populate the files array using the existing configurations.
@@ -127,9 +130,8 @@ func getFiles(files *SortableFiles) {
 			sortableName: strings.ToLower(fp),
 		}
 
-		if opts.Query != "" {
-			file.distance = levenshtein.RatioForStrings([]rune(fp), []rune(opts.Query), levenshtein.DefaultOptions) * distanceWeight
-			file.score = calculateScore(fp, opts.Include) * scoreWeight
+		if opts.Query != "" || opts.Select != "" {
+			file.score = levenshtein.RatioForStrings([]rune(fp), []rune(opts.Query), levenshtein.DefaultOptions)*distanceWeight + calculateScore(fp, opts.Include)*scoreWeight
 		}
 
 		if opts.Date {
@@ -210,6 +212,12 @@ func getFiles(files *SortableFiles) {
 	}
 }
 
+func sortByScore(files SortableFiles) {
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].score > files[j].score
+	})
+}
+
 func recurse(fp string, fn func(string) fs.WalkDirFunc) {
 	absfp, err := filepath.Abs(fp)
 	if err != nil {
@@ -235,12 +243,12 @@ func printResults(files SortableFiles) {
 	}
 }
 
-func printQueryResult(files SortableFiles) {
+func printSelectResult(files SortableFiles) {
 	bestFile := files[0]
 
 	for i := 1; i < len(files); i++ {
 		file := files[i]
-		if file.distance+file.score > bestFile.distance+bestFile.score {
+		if file.score > bestFile.score {
 			bestFile = file
 		}
 	}

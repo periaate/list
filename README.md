@@ -40,14 +40,15 @@ go build main.go
 
 |Flag|Short|Long|Description|
 |---|---|---|---|
-|Absolute|`-A`|`--absolute`|Format paths to be absolute. Relative by default.|
-|Recurse|`-r`|`--recurse`|Recursively list files in subdirectories|
-|Exclusive recurse|`-x`|`--xrecurse`|Exclusively list files in subdirectories|
-|Ascending|`-a`|`--ascending`|Order results in ascending order. Descending by default.|
-|Date|`-d`|`--date`|Order results by modified time. Ordered by filename by default.|
-|Query|`-q`|`--query`|Return the most similar file to the query.|
-|Include|`-i`|`--include`|Include only items fitting a given extension pattern. Use ',' for multiple patterns.|
-|Exclude|`-e`|`--exclude`|Exclude items fitting a given extension pattern. Use ',' for multiple patterns.|
+|Absolute|`-A`|`-absolute`|Format paths to be absolute. Relative by default.|
+|Recurse|`-r`|`-recurse`|Recursively list files in subdirectories|
+|Exclusive Recurse|`-x`|`-xrecurse`|Exclusively list files in subdirectories|
+|Ascending|`-a`|`-ascending`|Results will be ordered in ascending order. Files are ordered into descending order by default.|
+|Date|`-d`|`-date`|Results will be ordered by their modified time. Files are ordered by filename by default|
+|Select|`-S`|`-select`|Selects the item which matches the query the best.|
+|Query|`-Q`|`-query`|Returns items ordered by their similarity to the query.|
+|Include|`-i`|`-include`|Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns.|
+|Exclude|`-e`|`-exclude`|Given an existing extension pattern configuration target, will exclude items fitting the pattern. Use ',' to define multiple patterns.|
 
 
 ## Pattern File (`patterns.yml`)
