@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	gf "github.com/jessevdk/go-flags"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,26 +35,39 @@ var (
 	fp = "."
 )
 
+const (
+	// using parts to make the weights always add up to 1.0 as well as make it easier to see the ratio.
+	distanceParts = 1.0
+	scoreParts    = 1.0
+
+	distanceWeight = distanceParts / (distanceParts + scoreParts)
+	scoreWeight    = scoreParts / (distanceParts + scoreParts)
+)
+
 // SortableFiles is an array of sortableFiles which is sortable.
 type SortableFiles []sortableFile
 
 func (s SortableFiles) Len() int           { return len(s) }
 func (s SortableFiles) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s SortableFiles) Less(i, j int) bool { return naturalLess(s[i].sortable, s[j].sortable) }
+func (s SortableFiles) Less(i, j int) bool { return naturalLess(s[i].sortableName, s[j].sortableName) }
 
 type sortableFile struct {
-	Fp       string // Filepath
-	sortable string
-	Value    int64 // Countable value to be used by counting sort. Populated by unix timestamp.
+	Fp           string  // Filepath
+	sortableName string  // Filepath in lowercase for sorting
+	Value        int64   // Countable value to be used by counting sort. Populated by unix timestamp.
+	distance     float64 // Levenshtein distance between the query and the filepath
+	score        float64 // Score for how well the filepath matches the query
 }
 
-// Todo: Absolute path flag, Custom pattern files
+// TODO: Custom pattern files
 type Options struct {
 	Absolute           bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
 	Recurse            bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
 	ExclusiveRecursion bool `short:"x" long:"xrecurse" description:"Exclusively list files in subdirectories"`
 	Ascending          bool `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
+
+	Query string `short:"q" long:"query" description:"Returns the most similar file to the query."`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
 	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will excldue items fitting the pattern. Use ',' to define multiple patterns."`
@@ -64,6 +78,7 @@ type patterns struct {
 }
 
 func main() {
+	fmt.Println(distanceWeight, scoreWeight)
 	args, err := gf.Parse(&opts)
 	if err != nil {
 		log.Fatalln("Error parsing flags:", err)
@@ -95,7 +110,12 @@ func main() {
 		sort.Sort(files)
 	}
 
-	printResults(files)
+	if opts.Query == "" {
+		printResults(files)
+		return
+	}
+
+	printQueryResult(files)
 }
 
 // getFiles attempts to populate the files array using the existing configurations.
@@ -104,8 +124,13 @@ func getFiles(files *SortableFiles) {
 	perEntry := func(pre, base string, d fs.DirEntry) {
 		fp := filepath.ToSlash(path.Join(pre, base))
 		file := sortableFile{
-			Fp:       fp,
-			sortable: strings.ToLower(fp),
+			Fp:           fp,
+			sortableName: strings.ToLower(fp),
+		}
+
+		if opts.Query != "" {
+			file.distance = levenshtein.RatioForStrings([]rune(fp), []rune(opts.Query), levenshtein.DefaultOptions) * distanceWeight
+			file.score = calculateScore(fp, opts.Include) * scoreWeight
 		}
 
 		if opts.Date {
@@ -206,13 +231,30 @@ func printResults(files SortableFiles) {
 		if opts.Ascending {
 			k = len(files) - 1 - i
 		}
-		fp = files[k].Fp
-		if opts.Absolute {
-			fp, _ = filepath.Abs(fp)
-			fp = filepath.ToSlash(fp)
-		}
-		fmt.Println(fp)
+
+		printResult(files[k].Fp)
 	}
+}
+
+func printQueryResult(files SortableFiles) {
+	bestFile := files[0]
+
+	for i := 1; i < len(files); i++ {
+		file := files[i]
+		if file.distance+file.score > bestFile.distance+bestFile.score {
+			bestFile = file
+		}
+	}
+
+	printResult(bestFile.Fp)
+}
+
+func printResult(fp string) {
+	if opts.Absolute {
+		fp, _ = filepath.Abs(fp)
+		fp = filepath.ToSlash(fp)
+	}
+	fmt.Println(fp)
 }
 
 // updateTime updates the unix timestamp boundaries.
@@ -312,4 +354,22 @@ func naturalLess(a, b string) bool {
 		}
 	}
 	return len(a) < len(b)
+}
+
+// Calculates a score for how well the string matches the query using subsequence matching
+func calculateScore(str, query string) (score float64) {
+	strIndex, queryIndex := 0, 0
+
+	for strIndex < len(str) && queryIndex < len(query) {
+		if str[strIndex] == query[queryIndex] {
+			score += 1   // Increment score for each matching character
+			queryIndex++ // Move to the next character in the query
+		}
+		strIndex++ // Always move to the next character in the string
+	}
+
+	if queryIndex == len(query) {
+		return score / float64(len(str)) // Return the score divided by the length of the string
+	}
+	return 0 // Return 0 if the query is not a subsequence of the string
 }

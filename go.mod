@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/jessevdk/go-flags v1.5.0
+	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	gopkg.in/yaml.v3 v3.0.1
 )
 
