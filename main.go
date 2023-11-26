@@ -78,7 +78,6 @@ type patterns struct {
 }
 
 func main() {
-	fmt.Println(distanceWeight, scoreWeight)
 	args, err := gf.Parse(&opts)
 	if err != nil {
 		log.Fatalln("Error parsing flags:", err)
