@@ -66,11 +66,13 @@ type Options struct {
 	Ascending          bool `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 
+	Combine bool `short:"c" long:"combine" description:"If given multiple paths, will combine the results into one list."`
+
 	Select string `short:"S" long:"select" description:"Selects the item which matches the query the best."`
 	Query  string `short:"Q" long:"query" description:"Returns items ordered by their similarity to the query."`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
-	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will excldue items fitting the pattern. Use ',' to define multiple patterns."`
+	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will exclude items fitting the pattern. Use ',' to define multiple patterns."`
 }
 
 type patterns struct {
@@ -83,30 +85,45 @@ func main() {
 		log.Fatalln("Error parsing flags:", err)
 	}
 
-	// Get filepath
-	if len(args) > 0 {
-		fp = args[0]
-	}
-
-	// Validate filepath
-	stat, err := os.Stat(fp)
-	if err != nil || !stat.IsDir() {
-		log.Fatalln(err)
-	}
-
-	err = yaml.Unmarshal(patternsFile, &conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	parsePatterns()
-
 	files := SortableFiles{}
-	getFiles(&files)
+	for _, fp = range args {
 
-	if opts.Date {
-		files = countingSort(files)
-	} else {
-		sort.Sort(files)
+		// Validate filepath
+		stat, err := os.Stat(fp)
+		if err != nil || !stat.IsDir() {
+			log.Fatalln(err)
+		}
+
+		err = yaml.Unmarshal(patternsFile, &conf)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		parsePatterns()
+
+		getFiles(&files)
+
+		if opts.Date {
+			files = countingSort(files)
+		} else {
+			sort.Sort(files)
+		}
+
+		if !opts.Combine {
+			files = SortableFiles{}
+			switch {
+			case opts.Select != "":
+				printSelectResult(files)
+			case opts.Query != "":
+				sortByScore(files)
+				fallthrough
+			default:
+				printResults(files)
+			}
+		}
+	}
+
+	if !opts.Combine {
+		return
 	}
 
 	switch {

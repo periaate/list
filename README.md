@@ -45,7 +45,8 @@ go build main.go
 |Recurse|`-r`|`-recurse`|Recursively list files in subdirectories|
 |Exclusive Recurse|`-x`|`-xrecurse`|Exclusively list files in subdirectories|
 |Ascending|`-a`|`-ascending`|Results will be ordered in ascending order. Files are ordered into descending order by default.|
-|Date|`-d`|`-date`|Results will be ordered by their modified time. Files are ordered by filename by default|
+|Date|`-d`|`-date`|Results will be ordered by their modified time. Files are ordered by filename by default.|
+|Combine|`-c`|`-combine`|If given multiple paths, it will combine the results and then print them. Default is printing sequentially.|
 |Select|`-S`|`-select`|Selects the item which matches the query the best.|
 |Query|`-Q`|`-query`|Returns items ordered by their similarity to the query.|
 |Include|`-i`|`-include`|Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns.|
