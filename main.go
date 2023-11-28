@@ -87,8 +87,6 @@ func main() {
 
 	files := SortableFiles{}
 	for _, fp = range args {
-		fmt.Println(fp)
-
 		// Validate filepath
 		stat, err := os.Stat(fp)
 		if err != nil || !stat.IsDir() {
