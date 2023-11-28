@@ -63,7 +63,7 @@ type Options struct {
 	Absolute           bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
 	Recurse            bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
 	ExclusiveRecursion bool `short:"x" long:"xrecurse" description:"Exclusively list files in subdirectories"`
-	Ascending          bool `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Invert             bool `short:"a" long:"invert" description:"Results will be ordered in inverted order. Files are ordered into descending order by default."`
 	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 
 	Combine bool `short:"c" long:"combine" description:"If given multiple paths, will combine the results into one list."`
@@ -87,6 +87,7 @@ func main() {
 
 	files := SortableFiles{}
 	for _, fp = range args {
+		fmt.Println(fp)
 
 		// Validate filepath
 		stat, err := os.Stat(fp)
@@ -109,7 +110,6 @@ func main() {
 		}
 
 		if !opts.Combine {
-			files = SortableFiles{}
 			switch {
 			case opts.Select != "":
 				printSelectResult(files)
@@ -119,6 +119,7 @@ func main() {
 			default:
 				printResults(files)
 			}
+			files = SortableFiles{}
 		}
 	}
 
@@ -252,7 +253,7 @@ func recurse(fp string, fn func(string) fs.WalkDirFunc) {
 func printResults(files SortableFiles) {
 	for i := range files {
 		k := i
-		if opts.Ascending {
+		if opts.Invert {
 			k = len(files) - 1 - i
 		}
 
