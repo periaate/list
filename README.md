@@ -44,7 +44,7 @@ go build main.go
 |Absolute|`-A`|`-absolute`|Format paths to be absolute. Relative by default.|
 |Recurse|`-r`|`-recurse`|Recursively list files in subdirectories|
 |Exclusive Recurse|`-x`|`-xrecurse`|Exclusively list files in subdirectories|
-|Ascending|`-a`|`-ascending`|Results will be ordered in ascending order. Files are ordered into descending order by default.|
+|Reverse|`-r`|`-reverse`|Results will be printed in reversed order. Files are ordered into descending order by default.|
 |Date|`-d`|`-date`|Results will be ordered by their modified time. Files are ordered by filename by default.|
 |Combine|`-c`|`-combine`|If given multiple paths, it will combine the results and then print them. Default is printing sequentially.|
 |Select|`-S`|`-select`|Selects the item which matches the query the best.|
