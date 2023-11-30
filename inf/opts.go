@@ -21,11 +21,12 @@ type Options struct {
 
 	Combine bool `short:"c" long:"combine" description:"If given multiple paths, will combine the results into one list."`
 
-	Query string  `short:"q" long:"query" description:"Returns items ordered by their similarity to the query."`
-	Ngram int     `short:"n" long:"ngram" description:"Defines the n-gram size for the query algorithm. Default is 3."`
-	Top   int     `short:"t" long:"top" description:"Returns first n items."`
-	Prune float64 `short:"p" long:"prune" description:"Prunes items with a score lower than the given value. -1 to prune all items without a score. 0.0 is the default and will not prune any items."`
-	Score bool    `short:"s" long:"score" description:"Returns items with their score. Intended for debugging purposes."`
+	Query    string  `short:"q" long:"query" description:"Returns items ordered by their similarity to the query."`
+	QueryAll string  `short:"Q" long:"queryAll" description:"Takes comma separated queries and evaluates each query individually. Works with --combine."`
+	Ngram    int     `short:"n" long:"ngram" description:"Defines the n-gram size for the query algorithm. Default is 3."`
+	Top      int     `short:"t" long:"top" description:"Returns first n items."`
+	Prune    float64 `short:"p" long:"prune" description:"Prunes items with a score lower than the given value. -1 to prune all items without a score. 0.0 is the default and will not prune any items."`
+	Score    bool    `short:"s" long:"score" description:"Returns items with their score. Intended for debugging purposes."`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
 	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will exclude items fitting the pattern. Use ',' to define multiple patterns."`

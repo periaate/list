@@ -47,15 +47,6 @@ type patterns struct {
 }
 
 func main() {
-
-	if inf.Opts.Query != "" {
-		if inf.Opts.Ngram != 0 {
-			sorting.N = inf.Opts.Ngram
-		}
-		sorting.QueryGram = sorting.GenNgram(inf.Opts.Query, sorting.N)
-		sorting.Query = strings.ToLower(inf.Opts.Query)
-	}
-
 	files := sorting.SortableFiles{}
 
 	// If no arguments are given, use the current directory.
@@ -75,16 +66,28 @@ func main() {
 			log.Fatalln(err)
 		}
 		parsePatterns()
-
-		getFiles(&files)
-
-		if inf.Opts.Date {
-			files = sorting.CountingSort(files, lowestTime, highestTime)
+		queries := []string{}
+		if inf.Opts.QueryAll != "" {
+			queries = strings.Split(inf.Opts.QueryAll, ",")
+		} else if inf.Opts.Query != "" {
+			queries = append(queries, inf.Opts.Query)
+		} else {
+			queries = append(queries, "")
 		}
 
-		if !inf.Opts.Combine {
-			printResults(files)
-			files = sorting.SortableFiles{}
+		for _, query := range queries {
+			sorting.SetCurrentQuery(query)
+
+			getFiles(&files)
+
+			if inf.Opts.Date {
+				files = sorting.CountingSort(files, lowestTime, highestTime)
+			}
+
+			if !inf.Opts.Combine {
+				printResults(files)
+				files = sorting.SortableFiles{}
+			}
 		}
 	}
 
@@ -97,7 +100,7 @@ func main() {
 
 func printResults(files sorting.SortableFiles) {
 	switch {
-	case inf.Opts.Query != "":
+	case inf.Opts.Query != "" || inf.Opts.QueryAll != "":
 		sorting.SortByScore(files)
 		if inf.Opts.Prune != 0.0 {
 			if inf.Opts.Prune == -1.0 {
@@ -160,7 +163,7 @@ func getFiles(files *sorting.SortableFiles) {
 			SortableName: strings.ToLower(fp),
 		}
 
-		if inf.Opts.Query != "" {
+		if inf.Opts.Query != "" || inf.Opts.QueryAll != "" {
 			// file.Score = sorting.CalculateScore(file.SortableName, inf.Opts.Query)
 			// file.Ngram = sorting.GenNgram(file.SortableName)
 			file.Score = sorting.CalculateMatchScore(file.SortableName, sorting.N)
