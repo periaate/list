@@ -4,18 +4,16 @@ import (
 	_ "embed"
 	"fmt"
 	"io/fs"
+	"list/inf"
+	"list/sorting"
 	"log"
 	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"unicode"
 
-	gf "github.com/jessevdk/go-flags"
-	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,7 +21,6 @@ import (
 var patternsFile []byte
 
 var conf patterns // Configuration variable.
-var opts Options  // Flag options.
 
 var (
 	inclusionMap = map[string]bool{}
@@ -35,58 +32,27 @@ var (
 	fp = "."
 )
 
-const (
-	// using parts to make the weights always add up to 1.0 as well as make it easier to see the ratio.
-	distanceParts = 1.0
-	scoreParts    = 1.0
-
-	distanceWeight = distanceParts / (distanceParts + scoreParts)
-	scoreWeight    = scoreParts / (distanceParts + scoreParts)
-)
-
-// SortableFiles is an array of sortableFiles which is sortable.
-type SortableFiles []sortableFile
-
-func (s SortableFiles) Len() int           { return len(s) }
-func (s SortableFiles) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s SortableFiles) Less(i, j int) bool { return naturalLess(s[i].sortableName, s[j].sortableName) }
-
-type sortableFile struct {
-	Fp           string  // Filepath
-	sortableName string  // Filepath in lowercase for sorting
-	Value        int64   // Countable value to be used by counting sort. Populated by unix timestamp.
-	score        float64 // Score for how well the string matches the query
-}
-
-// TODO: Custom pattern files
-type Options struct {
-	Absolute           bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
-	Recurse            bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
-	ExclusiveRecursion bool `short:"x" long:"xrecurse" description:"Exclusively list files in subdirectories"`
-	Invert             bool `short:"a" long:"invert" description:"Results will be ordered in inverted order. Files are ordered into descending order by default."`
-	Date               bool `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
-
-	Combine bool `short:"c" long:"combine" description:"If given multiple paths, will combine the results into one list."`
-
-	Select string `short:"S" long:"select" description:"Selects the item which matches the query the best."`
-	Query  string `short:"Q" long:"query" description:"Returns items ordered by their similarity to the query."`
-
-	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
-	Exclude string `short:"e" long:"exclude" description:"Given an existing extension pattern configuration target, will exclude items fitting the pattern. Use ',' to define multiple patterns."`
-}
-
 type patterns struct {
 	Extensions map[string][]string `yaml:"extensions"`
 }
 
 func main() {
-	args, err := gf.Parse(&opts)
-	if err != nil {
-		log.Fatalln("Error parsing flags:", err)
+	if inf.Opts.Query != "" {
+		if inf.Opts.Ngram != 0 {
+			sorting.N = inf.Opts.Ngram
+		}
+		sorting.QueryGram = sorting.GenNgram(inf.Opts.Query, sorting.N)
+		sorting.Query = strings.ToLower(inf.Opts.Query)
 	}
 
-	files := SortableFiles{}
-	for _, fp = range args {
+	files := sorting.SortableFiles{}
+
+	// If no arguments are given, use the current directory.
+	if len(inf.Args) == 0 {
+		inf.Args = append(inf.Args, fp)
+	}
+
+	for _, fp = range inf.Args {
 		// Validate filepath
 		stat, err := os.Stat(fp)
 		if err != nil || !stat.IsDir() {
@@ -101,56 +67,90 @@ func main() {
 
 		getFiles(&files)
 
-		if opts.Date {
-			files = countingSort(files)
-		} else {
-			sort.Sort(files)
+		if inf.Opts.Date {
+			files = sorting.CountingSort(files, lowestTime, highestTime)
 		}
 
-		if !opts.Combine {
-			switch {
-			case opts.Select != "":
-				printSelectResult(files)
-			case opts.Query != "":
-				sortByScore(files)
-				fallthrough
-			default:
-				printResults(files)
-			}
-			files = SortableFiles{}
+		if !inf.Opts.Combine {
+			printResults(files)
+			files = sorting.SortableFiles{}
 		}
 	}
 
-	if !opts.Combine {
+	if !inf.Opts.Combine {
 		return
 	}
 
+	printResults(files)
+}
+
+func printResults(files sorting.SortableFiles) {
 	switch {
-	case opts.Select != "":
-		printSelectResult(files)
-	case opts.Query != "":
-		sortByScore(files)
-		fallthrough
+	case inf.Opts.Query != "":
+		sorting.SortByScore(files)
+		if inf.Opts.Prune != 0.0 {
+			if inf.Opts.Prune == -1.0 {
+				inf.Opts.Prune = 0.0
+			}
+			files = sorting.Prune(files, inf.Opts.Prune)
+		}
 	default:
-		printResults(files)
+		sort.Sort(files)
+	}
+	defaulPrint(files)
+}
+
+func defaulPrint(files sorting.SortableFiles) {
+	top := -1
+	if inf.Opts.Top > 0 && inf.Opts.Top < len(files) {
+		top = inf.Opts.Top
+	}
+
+	if top != -1 {
+		files = files[:top]
+	}
+
+	for i := range files {
+		k := i
+		if inf.Opts.Invert {
+			k = len(files) - 1 - i
+		}
+
+		printResult(files[k])
 	}
 }
 
+func printResult(sf *sorting.SortableFile) {
+	fp := filepath.ToSlash(sf.Fp)
+	if inf.Opts.Absolute {
+		fp, _ = filepath.Abs(sf.Fp)
+		fp = filepath.ToSlash(fp)
+	}
+
+	if inf.Opts.Score {
+		fmt.Printf("%f\t%s\n", sf.Score, sf.Fp)
+		return
+	}
+	fmt.Println(fp)
+}
+
 // getFiles attempts to populate the files array using the existing configurations.
-func getFiles(files *SortableFiles) {
-	// perEntry is ran on each file to construct sortableFile and check if it matches any patterns.
+func getFiles(files *sorting.SortableFiles) {
+	// perEntry is ran on each file to construct sorting.SortableFile and check if it matches any patterns.
 	perEntry := func(pre, base string, d fs.DirEntry) {
 		fp := filepath.ToSlash(path.Join(pre, base))
-		file := sortableFile{
+		file := &sorting.SortableFile{
 			Fp:           fp,
-			sortableName: strings.ToLower(fp),
+			SortableName: strings.ToLower(fp),
 		}
 
-		if opts.Query != "" || opts.Select != "" {
-			file.score = levenshtein.RatioForStrings([]rune(fp), []rune(opts.Query), levenshtein.DefaultOptions)*distanceWeight + calculateScore(fp, opts.Include)*scoreWeight
+		if inf.Opts.Query != "" {
+			// file.Score = sorting.CalculateScore(file.SortableName, inf.Opts.Query)
+			// file.Ngram = sorting.GenNgram(file.SortableName)
+			file.Score = sorting.CalculateMatchScore(file.SortableName, sorting.N)
 		}
 
-		if opts.Date {
+		if inf.Opts.Date {
 			inf, err := d.Info()
 			if err != nil {
 				return
@@ -180,7 +180,7 @@ func getFiles(files *SortableFiles) {
 	}
 
 	// Get files
-	if opts.ExclusiveRecursion {
+	if inf.Opts.ExclusiveRecursion {
 		res, err := os.ReadDir(fp)
 		if err != nil {
 			log.Fatalln(err)
@@ -205,7 +205,7 @@ func getFiles(files *SortableFiles) {
 			recurse(filepath.Join(fp, dir.Name()), fn)
 		}
 
-	} else if !opts.Recurse {
+	} else if !inf.Opts.Recurse {
 		res, err := os.ReadDir(fp)
 		if err != nil {
 			log.Fatalln(err)
@@ -228,12 +228,6 @@ func getFiles(files *SortableFiles) {
 	}
 }
 
-func sortByScore(files SortableFiles) {
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].score > files[j].score
-	})
-}
-
 func recurse(fp string, fn func(string) fs.WalkDirFunc) {
 	absfp, err := filepath.Abs(fp)
 	if err != nil {
@@ -247,39 +241,6 @@ func recurse(fp string, fn func(string) fs.WalkDirFunc) {
 	}
 }
 
-// printResults prints the results to stdout.
-func printResults(files SortableFiles) {
-	for i := range files {
-		k := i
-		if opts.Invert {
-			k = len(files) - 1 - i
-		}
-
-		printResult(files[k].Fp)
-	}
-}
-
-func printSelectResult(files SortableFiles) {
-	bestFile := files[0]
-
-	for i := 1; i < len(files); i++ {
-		file := files[i]
-		if file.score > bestFile.score {
-			bestFile = file
-		}
-	}
-
-	printResult(bestFile.Fp)
-}
-
-func printResult(fp string) {
-	if opts.Absolute {
-		fp, _ = filepath.Abs(fp)
-		fp = filepath.ToSlash(fp)
-	}
-	fmt.Println(fp)
-}
-
 // updateTime updates the unix timestamp boundaries.
 func updateTime(t int64) {
 	if t > highestTime {
@@ -290,40 +251,12 @@ func updateTime(t int64) {
 	}
 }
 
-// countingSort sorts an array into descending order.
-//
-// Counting sort needs to be called with an array, an integer k which is
-// the largest value in the array, and a function which takes an element
-// of the array as argument, and returns its value in the range [0, k].
-func countingSort(input []sortableFile) []sortableFile {
-	k := int(highestTime - lowestTime)
-	count := make([]int, k+1)
-
-	// Count occurrences of each value.
-	for _, v := range input {
-		count[v.Value-lowestTime]++
-	}
-
-	// Build and apply offset by summing the counts of previous values.
-	for i := 1; i <= k; i++ {
-		count[i] += count[i-1]
-	}
-
-	result := make([]sortableFile, len(input))
-	for _, v := range input {
-		result[len(input)-count[v.Value-lowestTime]] = v
-		count[v.Value-lowestTime]--
-	}
-
-	return result
-}
-
 // parsePatterns checks for flags and builds pattern maps accordingly which will be used to
 // include or exclude files as per the pattern.
 func parsePatterns() {
-	if opts.Include != "" {
+	if inf.Opts.Include != "" {
 		// Split flag arguments by comma for multiple items.
-		incstr := strings.Split(opts.Include, ",")
+		incstr := strings.Split(inf.Opts.Include, ",")
 
 		for _, key := range incstr {
 			// Find matching extensions and add each of their elements to the inclusion map.
@@ -335,9 +268,9 @@ func parsePatterns() {
 		}
 	}
 
-	if opts.Exclude != "" {
+	if inf.Opts.Exclude != "" {
 		// Split flag arguments by comma for multiple items.
-		excstr := strings.Split(opts.Exclude, ",")
+		excstr := strings.Split(inf.Opts.Exclude, ",")
 
 		for _, key := range excstr {
 			// Find matching extensions and add each of their elements to the exclusion map.
@@ -348,51 +281,4 @@ func parsePatterns() {
 			}
 		}
 	}
-}
-
-// naturalLess compares two strings and returns true if a < b in natural order.
-func naturalLess(a, b string) bool {
-	var ai, bi int
-	for ai < len(a) && bi < len(b) {
-		ach, bch := rune(a[ai]), rune(b[bi])
-		if unicode.IsDigit(ach) && unicode.IsDigit(bch) {
-			var anum, bnum string
-			for ; ai < len(a) && unicode.IsDigit(rune(a[ai])); ai++ {
-				anum += string(a[ai])
-			}
-			for ; bi < len(b) && unicode.IsDigit(rune(b[bi])); bi++ {
-				bnum += string(b[bi])
-			}
-			an, _ := strconv.Atoi(anum)
-			bn, _ := strconv.Atoi(bnum)
-			if an != bn {
-				return an < bn
-			}
-		} else {
-			if ach != bch {
-				return ach < bch
-			}
-			ai++
-			bi++
-		}
-	}
-	return len(a) < len(b)
-}
-
-// Calculates a score for how well the string matches the query using subsequence matching
-func calculateScore(str, query string) (score float64) {
-	strIndex, queryIndex := 0, 0
-
-	for strIndex < len(str) && queryIndex < len(query) {
-		if str[strIndex] == query[queryIndex] {
-			score += 1   // Increment score for each matching character
-			queryIndex++ // Move to the next character in the query
-		}
-		strIndex++ // Always move to the next character in the string
-	}
-
-	if queryIndex == len(query) {
-		return score / float64(len(str)) // Return the score divided by the length of the string
-	}
-	return 0 // Return 0 if the query is not a subsequence of the string
 }
