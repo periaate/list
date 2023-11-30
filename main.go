@@ -17,6 +17,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TODO:
+// Symlinks flag
+// Archive support
+// Proper slicing (start, end)
+// Custom pattern files
+// Pass in patterns as string
+// Recurse depth
+// Exlusive recurse depth (inverse depth)
+// Support piping in paths
+
 //go:embed patterns.yml
 var patternsFile []byte
 
@@ -108,7 +118,12 @@ func defaulPrint(files sorting.SortableFiles) {
 	}
 
 	if top != -1 {
-		files = files[:top]
+		if inf.Opts.Invert {
+			top = len(files) - top
+			files = files[top:]
+		} else {
+			files = files[:top]
+		}
 	}
 
 	for i := range files {
