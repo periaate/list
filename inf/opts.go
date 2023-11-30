@@ -2,6 +2,7 @@ package inf
 
 import (
 	"log"
+	"os"
 
 	gf "github.com/jessevdk/go-flags"
 )
@@ -23,7 +24,7 @@ type Options struct {
 	Query string  `short:"q" long:"query" description:"Returns items ordered by their similarity to the query."`
 	Ngram int     `short:"n" long:"ngram" description:"Defines the n-gram size for the query algorithm. Default is 3."`
 	Top   int     `short:"t" long:"top" description:"Returns first n items."`
-	Prune float64 `short:"p" long:"prune" description:"Prunes items with a score lower than the given value. -1 to prune all items below 0.0. 0.0 is the default and will not prune any items."`
+	Prune float64 `short:"p" long:"prune" description:"Prunes items with a score lower than the given value. -1 to prune all items without a score. 0.0 is the default and will not prune any items."`
 	Score bool    `short:"s" long:"score" description:"Returns items with their score. Intended for debugging purposes."`
 
 	Include string `short:"i" long:"include" description:"Given an existing extension pattern configuration target, will include only items fitting the pattern. Use ',' to define multiple patterns."`
@@ -34,6 +35,9 @@ func init() {
 	Opts = Options{}
 	args, err := gf.Parse(&Opts)
 	if err != nil {
+		if gf.WroteHelp(err) {
+			os.Exit(0)
+		}
 		log.Fatalln("Error parsing flags:", err)
 	}
 	Args = args

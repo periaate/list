@@ -37,6 +37,7 @@ type patterns struct {
 }
 
 func main() {
+
 	if inf.Opts.Query != "" {
 		if inf.Opts.Ngram != 0 {
 			sorting.N = inf.Opts.Ngram
