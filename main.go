@@ -18,14 +18,16 @@ import (
 )
 
 // TODO:
-// Symlinks flag
-// Archive support
+// Declarative application of flags, as opposed to current hardcoded, spread out way; improve maintainability.
 // Proper slicing (start, end)
 // Custom pattern files
 // Pass in patterns as string
-// Recurse depth
-// Exlusive recurse depth (inverse depth)
 // Support piping in paths
+// Archive support
+// Symlinks flag
+
+// DONE! Recurse depth
+// DONE! Exlusive recurse depth (inverse depth)
 
 //go:embed patterns.yml
 var patternsFile []byte
@@ -80,10 +82,6 @@ func main() {
 
 			getFiles(&files)
 
-			if inf.Opts.Date {
-				files = sorting.CountingSort(files, lowestTime, highestTime)
-			}
-
 			if !inf.Opts.Combine {
 				printResults(files)
 				files = sorting.SortableFiles{}
@@ -99,6 +97,9 @@ func main() {
 }
 
 func printResults(files sorting.SortableFiles) {
+	if inf.Opts.Silent {
+		return
+	}
 	switch {
 	case inf.Opts.Query != "" || inf.Opts.QueryAll != "":
 		sorting.SortByScore(files)
@@ -108,6 +109,10 @@ func printResults(files sorting.SortableFiles) {
 			}
 			files = sorting.Prune(files, inf.Opts.Prune)
 		}
+	case inf.Opts.Date:
+		sort.Slice(files, func(i, j int) bool {
+			return files[i].Value > files[j].Value
+		})
 	default:
 		sort.Sort(files)
 	}
@@ -158,14 +163,37 @@ func getFiles(files *sorting.SortableFiles) {
 	// perEntry is ran on each file to construct sorting.SortableFile and check if it matches any patterns.
 	perEntry := func(pre, base string, d fs.DirEntry) {
 		fp := filepath.ToSlash(path.Join(pre, base))
+		for _, ignore := range inf.Opts.Ignore {
+			if sorting.MatchScore(fp, sorting.N, ignore) == 100 {
+				return
+			}
+		}
+
+		// This is going to become unmaintainable, lest the manner within which all of this is handled is managed is changed.
+		// Perhaps creating arrays of the functions which are ran at each stage (init, getting files, and printing, etc.)
+		// could make this process much more readable.
+		if inf.Opts.Depth != 0 {
+			var c int
+			for _, r := range fp {
+				if r == '/' || r == '\\' {
+					c++
+				}
+			}
+
+			if inf.Opts.ExclusiveRecursion && c < inf.Opts.Depth {
+				return
+			}
+			if inf.Opts.Recurse && c > inf.Opts.Depth {
+				return
+			}
+		}
+
 		file := &sorting.SortableFile{
 			Fp:           fp,
 			SortableName: strings.ToLower(fp),
 		}
 
 		if inf.Opts.Query != "" || inf.Opts.QueryAll != "" {
-			// file.Score = sorting.CalculateScore(file.SortableName, inf.Opts.Query)
-			// file.Ngram = sorting.GenNgram(file.SortableName)
 			file.Score = sorting.CalculateMatchScore(file.SortableName, sorting.N)
 		}
 

@@ -17,6 +17,11 @@ var (
 	Query     string
 )
 
+func SetCurrentQuery(query string) {
+	Query = strings.ToLower(query)
+	QueryGram = GenNgram(Query, N)
+}
+
 // SortableFiles is an array of sortableFiles which is sortable.
 type SortableFiles []*SortableFile
 
@@ -82,6 +87,35 @@ func CalculateMatchScore(str string, n int) (score float64) {
 	for gram := range QueryGram {
 		if _, ok := ngrams[gram]; ok {
 			score += 1 / float64(len(Query))
+		}
+	}
+
+	return score
+}
+
+func MatchScore(str string, n int, query string) (score float64) {
+	query = strings.ToLower(query)
+	queryGram := GenNgram(query, N)
+	str = strings.ToLower(str)
+
+	ngramLen := len(str) - n + 1
+	ngrams := make(map[string]bool, ngramLen)
+
+	for i := 0; i < len(str)-len(query)+1; i++ {
+		sub := str[i : i+len(query)]
+		if sub == query {
+			// Return as containing the query is considered a perfect match
+			return contains
+		}
+
+		gram := str[i : i+n]
+		ngrams[gram] = true
+	}
+
+	// check for ngrams
+	for gram := range queryGram {
+		if _, ok := ngrams[gram]; ok {
+			score += 1 / float64(len(query))
 		}
 	}
 
