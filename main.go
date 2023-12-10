@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	_ "embed"
 	"fmt"
 	"io/fs"
@@ -33,6 +34,9 @@ import (
 var patternsFile []byte
 
 var conf patterns // Configuration variable.
+
+// the interval of blushing the buffer
+const bufLength = 500
 
 var (
 	inclusionMap = map[string]bool{}
@@ -116,10 +120,10 @@ func printResults(files sorting.SortableFiles) {
 	default:
 		sort.Sort(files)
 	}
-	defaulPrint(files)
+	defaulPrintBuf(files)
 }
 
-func defaulPrint(files sorting.SortableFiles) {
+func defaulPrintBuf(files sorting.SortableFiles) {
 	top := -1
 	if inf.Opts.Top > 0 && inf.Opts.Top < len(files) {
 		top = inf.Opts.Top
@@ -134,28 +138,30 @@ func defaulPrint(files sorting.SortableFiles) {
 		}
 	}
 
+	buf := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
+
 	for i := range files {
 		k := i
 		if inf.Opts.Invert {
 			k = len(files) - 1 - i
 		}
+		file := files[k]
 
-		printResult(files[k])
-	}
-}
+		fp := filepath.ToSlash(file.Fp)
+		if inf.Opts.Absolute {
+			fp, _ = filepath.Abs(file.Fp)
+			fp = filepath.ToSlash(fp)
+		}
 
-func printResult(sf *sorting.SortableFile) {
-	fp := filepath.ToSlash(sf.Fp)
-	if inf.Opts.Absolute {
-		fp, _ = filepath.Abs(sf.Fp)
-		fp = filepath.ToSlash(fp)
+		if inf.Opts.Score {
+			fp = fmt.Sprintf("%f\t%s\n", file.Score, file.Fp)
+		}
+		buf.WriteString(fp + "\n")
+		if i%bufLength == 0 {
+			buf.Flush()
+		}
 	}
-
-	if inf.Opts.Score {
-		fmt.Printf("%f\t%s\n", sf.Score, sf.Fp)
-		return
-	}
-	fmt.Println(fp)
+	buf.Flush()
 }
 
 // getFiles attempts to populate the files array using the existing configurations.
