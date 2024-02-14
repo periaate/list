@@ -79,6 +79,7 @@ func CalculateMatchScore(str string, n int) (score float64) {
 			return contains
 		}
 
+		// I think this might be currently skipping some ngrams.
 		gram := str[i : i+n]
 		ngrams[gram] = true
 	}

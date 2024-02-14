@@ -25,9 +25,11 @@ type Options struct {
 	Query    string  `short:"q" long:"query" description:"Returns items ordered by their similarity to the query."`
 	QueryAll string  `short:"Q" long:"queryAll" description:"Takes comma separated queries and evaluates each query individually. Works with --combine."`
 	Ngram    int     `short:"n" long:"ngram" description:"Defines the n-gram size for the query algorithm. Default is 3."`
-	Top      int     `short:"t" long:"top" description:"Returns first n items."`
 	Prune    float64 `short:"p" long:"prune" description:"Prunes items with a score lower than the given value. -1 to prune all items without a score. 0.0 is the default and will not prune any items."`
 	Score    bool    `short:"s" long:"score" description:"Returns items with their score. Intended for debugging purposes."`
+
+	Select int `short:"S" long:"select" description:"Selects n items."`
+	From   int `short:"f" long:"from" description:"Returns items starting from the given index."`
 
 	Ignore []string `long:"ignore" description:"Ignores all perfectly matched items."`
 	Silent bool     `long:"silent" description:"Does not list item. Inteded for debugging purposes."`

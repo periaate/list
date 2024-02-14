@@ -106,13 +106,13 @@ func printResults(files sorting.SortableFiles) {
 	}
 	switch {
 	case inf.Opts.Query != "" || inf.Opts.QueryAll != "":
-		sorting.SortByScore(files)
 		if inf.Opts.Prune != 0.0 {
 			if inf.Opts.Prune == -1.0 {
 				inf.Opts.Prune = 0.0
 			}
 			files = sorting.Prune(files, inf.Opts.Prune)
 		}
+		sorting.SortByScore(files)
 	case inf.Opts.Date:
 		sort.Slice(files, func(i, j int) bool {
 			return files[i].Value > files[j].Value
@@ -123,28 +123,46 @@ func printResults(files sorting.SortableFiles) {
 	defaulPrintBuf(files)
 }
 
+func reverse[T any](ar []T) {
+	for i := len(ar)/2 - 1; i >= 0; i-- {
+		opp := len(ar) - 1 - i
+		ar[i], ar[opp] = ar[opp], ar[i]
+	}
+}
+
 func defaulPrintBuf(files sorting.SortableFiles) {
-	top := -1
-	if inf.Opts.Top > 0 && inf.Opts.Top < len(files) {
-		top = inf.Opts.Top
+	if inf.Opts.Invert {
+		reverse(files)
+	}
+	// if
+
+	sel := 0
+	from := 0
+	if inf.Opts.From > 0 && inf.Opts.From < len(files)-1 {
+		from = inf.Opts.From
+	}
+	if inf.Opts.Select > 0 {
+		sel = inf.Opts.Select + from
+	}
+	switch {
+	case sel == 0 && from > 0:
+		files = files[from:]
+	case sel > 0 && from > 0:
+		files = files[from:sel]
+	case sel > 0 && from == 0:
+		files = files[:sel]
 	}
 
-	if top != -1 {
-		if inf.Opts.Invert {
-			top = len(files) - top
-			files = files[top:]
-		} else {
-			files = files[:top]
-		}
-	}
-
+	// I am unsure of how large this buffer should be. Testing or profiling might be necessary to
+	// find what is reasonable. The default buffer size was flushing automatically before being told to.
+	// This might be okay in itself, and we might not need to manually set a buffer ta all (or flush).
 	buf := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
 
 	for i := range files {
 		k := i
-		if inf.Opts.Invert {
-			k = len(files) - 1 - i
-		}
+		// if inf.Opts.Invert {
+		// 	k = len(files) - 1 - i
+		// }
 		file := files[k]
 
 		fp := filepath.ToSlash(file.Fp)
