@@ -1,355 +1,42 @@
 package main
 
 import (
-	"bufio"
-	_ "embed"
-	"fmt"
-	"io/fs"
-	"list/inf"
-	"list/sorting"
 	"log"
-	"math"
 	"os"
-	"path"
-	"path/filepath"
-	"sort"
-	"strings"
 
-	"gopkg.in/yaml.v3"
+	gf "github.com/jessevdk/go-flags"
 )
 
-// TODO:
-// Declarative application of flags, as opposed to current hardcoded, spread out way; improve maintainability.
-// Proper slicing (start, end)
-// Custom pattern files
-// Pass in patterns as string
-// Support piping in paths
-// Archive support
-// Symlinks flag
+var Opts Options
 
-// DONE! Recurse depth
-// DONE! Exlusive recurse depth (inverse depth)
+var Args []string
 
-//go:embed patterns.yml
-var patternsFile []byte
+type Options struct {
+	Absolute bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
+	Recurse  bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
 
-var conf patterns // Configuration variable.
+	// filters
+	Include []string `short:"i" long:"include" description:"File type inclusion: image, video, audio"`
+	Exclude []string `short:"e" long:"exclude" description:"File type exclusion: image, video, audio."`
+	Ignore  []string `short:"z" long:"ignore" description:"Ignores all paths which include any given strings."`
+	Search  []string `short:"s" long:"search" description:"Only include paths which include any given strings."`
 
-// the interval of blushing the buffer
-const bufLength = 500
-
-var (
-	inclusionMap = map[string]bool{}
-	exclusionMap = map[string]bool{}
-
-	highestTime int64                 // Highest found unix timestamp.
-	lowestTime  int64 = math.MaxInt64 // Lowest found unix timestamp. Uses MaxInt64 to make comparisons work.
-
-	fp = "."
-)
-
-type patterns struct {
-	Extensions map[string][]string `yaml:"extensions"`
+	// process
+	Ascending bool   `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Date      bool   `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
+	Slice     string `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing."`
 }
 
 func main() {
-	files := sorting.SortableFiles{}
-
-	// If no arguments are given, use the current directory.
-	if len(inf.Args) == 0 {
-		inf.Args = append(inf.Args, fp)
-	}
-
-	for _, fp = range inf.Args {
-		// Validate filepath
-		stat, err := os.Stat(fp)
-		if err != nil || !stat.IsDir() {
-			log.Fatalln(err)
-		}
-
-		err = yaml.Unmarshal(patternsFile, &conf)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		parsePatterns()
-		queries := []string{}
-		if inf.Opts.QueryAll != "" {
-			queries = strings.Split(inf.Opts.QueryAll, ",")
-		} else if inf.Opts.Query != "" {
-			queries = append(queries, inf.Opts.Query)
-		} else {
-			queries = append(queries, "")
-		}
-
-		for _, query := range queries {
-			sorting.SetCurrentQuery(query)
-
-			getFiles(&files)
-
-			if !inf.Opts.Combine {
-				printResults(files)
-				files = sorting.SortableFiles{}
-			}
-		}
-	}
-
-	if !inf.Opts.Combine {
-		return
-	}
-
-	printResults(files)
-}
-
-func printResults(files sorting.SortableFiles) {
-	if inf.Opts.Silent {
-		return
-	}
-	switch {
-	case inf.Opts.Query != "" || inf.Opts.QueryAll != "":
-		if inf.Opts.Prune != 0.0 {
-			if inf.Opts.Prune == -1.0 {
-				inf.Opts.Prune = 0.0
-			}
-			files = sorting.Prune(files, inf.Opts.Prune)
-		}
-		sorting.SortByScore(files)
-	case inf.Opts.Date:
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Value > files[j].Value
-		})
-	default:
-		sort.Sort(files)
-	}
-	defaulPrintBuf(files)
-}
-
-func reverse[T any](ar []T) {
-	for i := len(ar)/2 - 1; i >= 0; i-- {
-		opp := len(ar) - 1 - i
-		ar[i], ar[opp] = ar[opp], ar[i]
-	}
-}
-
-func defaulPrintBuf(files sorting.SortableFiles) {
-	if inf.Opts.Invert {
-		reverse(files)
-	}
-	// if
-
-	sel := 0
-	from := 0
-	if inf.Opts.From > 0 && inf.Opts.From < len(files)-1 {
-		from = inf.Opts.From
-	}
-	if inf.Opts.Select > 0 {
-		sel = inf.Opts.Select + from
-	}
-	switch {
-	case sel == 0 && from > 0:
-		files = files[from:]
-	case sel > 0 && from > 0:
-		files = files[from:sel]
-	case sel > 0 && from == 0:
-		files = files[:sel]
-	}
-
-	// I am unsure of how large this buffer should be. Testing or profiling might be necessary to
-	// find what is reasonable. The default buffer size was flushing automatically before being told to.
-	// This might be okay in itself, and we might not need to manually set a buffer ta all (or flush).
-	buf := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
-
-	for i := range files {
-		k := i
-		// if inf.Opts.Invert {
-		// 	k = len(files) - 1 - i
-		// }
-		file := files[k]
-
-		fp := filepath.ToSlash(file.Fp)
-		if inf.Opts.Absolute {
-			fp, _ = filepath.Abs(file.Fp)
-			fp = filepath.ToSlash(fp)
-		}
-
-		if inf.Opts.Score {
-			fp = fmt.Sprintf("%f\t%s\n", file.Score, file.Fp)
-		}
-		buf.WriteString(fp + "\n")
-		if i%bufLength == 0 {
-			buf.Flush()
-		}
-	}
-	buf.Flush()
-}
-
-// getFiles attempts to populate the files array using the existing configurations.
-func getFiles(files *sorting.SortableFiles) {
-	// perEntry is ran on each file to construct sorting.SortableFile and check if it matches any patterns.
-	perEntry := func(pre, base string, d fs.DirEntry) {
-		fp := filepath.ToSlash(path.Join(pre, base))
-		for _, ignore := range inf.Opts.Ignore {
-			if sorting.MatchScore(fp, sorting.N, ignore) == 100 {
-				return
-			}
-		}
-
-		// This is going to become unmaintainable, lest the manner within which all of this is handled is managed is changed.
-		// Perhaps creating arrays of the functions which are ran at each stage (init, getting files, and printing, etc.)
-		// could make this process much more readable.
-		if inf.Opts.Depth != 0 {
-			var c int
-			for _, r := range fp {
-				if r == '/' || r == '\\' {
-					c++
-				}
-			}
-
-			if inf.Opts.ExclusiveRecursion && c < inf.Opts.Depth {
-				return
-			}
-			if inf.Opts.Recurse && c > inf.Opts.Depth {
-				return
-			}
-		}
-
-		file := &sorting.SortableFile{
-			Fp:           fp,
-			SortableName: strings.ToLower(fp),
-		}
-
-		if inf.Opts.Query != "" || inf.Opts.QueryAll != "" {
-			file.Score = sorting.CalculateMatchScore(file.SortableName, sorting.N)
-		}
-
-		if inf.Opts.Date {
-			inf, err := d.Info()
-			if err != nil {
-				return
-			}
-			unixTime := inf.ModTime().Unix()
-			updateTime(unixTime)
-			file.Value = unixTime
-		}
-
-		// Check files extension and match against patterns.
-		ext := filepath.Ext(file.Fp)
-		incl := true
-		if len(inclusionMap) != 0 {
-			if _, ok := inclusionMap[ext]; !ok {
-				incl = false
-			}
-		}
-		if len(exclusionMap) != 0 {
-			if _, ok := exclusionMap[ext]; ok {
-				incl = false
-			}
-		}
-
-		if incl {
-			*files = append(*files, file)
-		}
-	}
-
-	// Get files
-	if inf.Opts.ExclusiveRecursion {
-		res, err := os.ReadDir(fp)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		dirs := []fs.DirEntry{}
-		for _, d := range res {
-			if d.IsDir() {
-				dirs = append(dirs, d)
-			}
-		}
-		fn := func(pre string) fs.WalkDirFunc {
-			return func(path string, d fs.DirEntry, err error) error {
-				if d == nil || err != nil {
-					return err
-				}
-				perEntry(pre, path, d)
-				return nil
-			}
-		}
-
-		for _, dir := range dirs {
-			recurse(filepath.Join(fp, dir.Name()), fn)
-		}
-
-	} else if !inf.Opts.Recurse {
-		res, err := os.ReadDir(fp)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		for _, d := range res {
-			perEntry(fp, d.Name(), d)
-		}
-	} else {
-		fn := func(pre string) fs.WalkDirFunc {
-			return func(path string, d fs.DirEntry, err error) error {
-				if d == nil || err != nil {
-					return err
-				}
-				perEntry(pre, path, d)
-				return nil
-			}
-		}
-
-		recurse(fp, fn)
-	}
-}
-
-func recurse(fp string, fn func(string) fs.WalkDirFunc) {
-	absfp, err := filepath.Abs(fp)
+	Opts = Options{}
+	args, err := gf.Parse(&Opts)
 	if err != nil {
-		log.Fatalln(err)
-	}
-	pre := fp
-
-	err = fs.WalkDir(os.DirFS(absfp), ".", fn(pre))
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
-// updateTime updates the unix timestamp boundaries.
-func updateTime(t int64) {
-	if t > highestTime {
-		highestTime = t
-	}
-	if t < lowestTime {
-		lowestTime = t
-	}
-}
-
-// parsePatterns checks for flags and builds pattern maps accordingly which will be used to
-// include or exclude files as per the pattern.
-func parsePatterns() {
-	if inf.Opts.Include != "" {
-		// Split flag arguments by comma for multiple items.
-		incstr := strings.Split(inf.Opts.Include, ",")
-
-		for _, key := range incstr {
-			// Find matching extensions and add each of their elements to the inclusion map.
-			if v, ok := conf.Extensions[key]; ok {
-				for _, val := range v {
-					inclusionMap[val] = ok
-				}
-			}
+		if gf.WroteHelp(err) {
+			os.Exit(0)
 		}
+		log.Fatalln("Error parsing flags:", err)
 	}
+	Args = args
 
-	if inf.Opts.Exclude != "" {
-		// Split flag arguments by comma for multiple items.
-		excstr := strings.Split(inf.Opts.Exclude, ",")
-
-		for _, key := range excstr {
-			// Find matching extensions and add each of their elements to the exclusion map.
-			if v, ok := conf.Extensions[key]; ok {
-				for _, val := range v {
-					exclusionMap[val] = ok
-				}
-			}
-		}
-	}
+	List()
 }
