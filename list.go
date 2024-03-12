@@ -182,17 +182,35 @@ func collectFilters() []filter {
 	return fns
 }
 
+func reverse(filenames []*finfo) []*finfo {
+	for i := 0; i < len(filenames)/2; i++ {
+		j := len(filenames) - i - 1
+		filenames[i], filenames[j] = filenames[j], filenames[i]
+	}
+	return filenames
+}
+
 func collectProcess() []process {
 	var fns []process
-	sorting := byName
-	order := toDesc
-	if Opts.Ascending {
-		order = toAsc
+
+	switch {
+	case len(Opts.Query) > 0:
+		fns = append(fns, queryProcess)
+		if Opts.Ascending {
+			fns = append(fns, reverse)
+		}
+	case Opts.Ascending, Opts.Date:
+		sorting := byName
+		order := toDesc
+		if Opts.Ascending {
+			order = toAsc
+		}
+		if Opts.Date {
+			sorting = byDate
+		}
+		fns = append(fns, sortProcess(sorting, order))
 	}
-	if Opts.Date {
-		sorting = byDate
-	}
-	fns = append(fns, sortProcess(sorting, order))
+
 	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
 	if len(Opts.Slice) >= 4 {
 		fns = append(fns, sliceProcess(Opts.Slice))

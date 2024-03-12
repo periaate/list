@@ -28,9 +28,10 @@ type Options struct {
 	FileOnly bool `long:"files" description:"Only include files in the result."`
 
 	// process
-	Ascending bool   `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
-	Date      bool   `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
-	Slice     string `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing."`
+	Query     []string `short:"q" long:"query" description:"Fuzzy search query. Results will be ordered by their score."`
+	Ascending bool     `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Date      bool     `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
+	Slice     string   `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing."`
 }
 
 func main() {
