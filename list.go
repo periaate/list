@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/fs"
 	"log"
 	"math"
@@ -12,24 +11,34 @@ import (
 	"strings"
 )
 
-// filters
+// 3 paths
+// walkDir -r recursion
+// readDir no recursion
+// recursive readDir for -T --toDepth and -F --fromDepth
+
+// dirEntryFns - add additional information to finfo if necessary
+// including mod time in finfo -d
+// including score in finfo for query -q --query
+
+// filters - filters determine whether or not a given file should be included in the result
 // include file types
 // exclude file types
 // ignore patterns
 // strict search
 
-// selection
-// slices -S
-
-// sorting & ordering
+// processes - processes are applied to the result after filtering. They cna manipulate the result in any way.
+// fuzzy search with score -q --query
 // sort by date -d
 // sort by filename -f (natural sorting)
 // sort in ascending order -a
+// slices -S
+
+// print - printing the result
+// absolute paths -A
 
 // onhold
 // dir only
 // file only
-// fuzzy search with score
 
 var (
 	highestTime int64                 // Highest found unix timestamp.
@@ -38,6 +47,10 @@ var (
 	fp = "./"
 )
 
+type result struct {
+	files []*finfo
+}
+
 type finfo struct {
 	name string
 	path string // includes name, relative path to cwd
@@ -45,66 +58,85 @@ type finfo struct {
 }
 
 func List() {
+	res := &result{[]*finfo{}}
 	filters := collectFilters()
 	processes := collectProcess()
-
-	res := collectFiles(filters)
+	collectResult(buildWalkDirFn(filters, res))
 
 	ProcessList(res, processes)
 	printWithBuf(res.files)
 }
-func collectFiles(filters []filter) *result {
-	res := &result{[]*finfo{}}
 
+func collectResult(fn fs.WalkDirFunc) {
 	if len(Args) > 0 {
 		fp = Args[0]
 	}
 
-	if Opts.Recurse {
-		var walkFn fs.WalkDirFunc
-		if Opts.Date {
-			walkFn = filterFnRecursive(filters, res, optsHasDate)
-		} else {
-			walkFn = filterFnRecursive(filters, res)
-		}
+	stat, err := os.Stat(fp)
+	if err != nil || !stat.IsDir() {
+		log.Fatalln(err)
+	}
 
-		stat, err := os.Stat(fp)
-		if err != nil || !stat.IsDir() {
-			log.Fatalln(err)
-		}
-		err = filepath.WalkDir(fp, walkFn)
+	switch {
+	case Opts.Recurse:
+		err = filepath.WalkDir(fp, fn)
 		if err != nil {
 			log.Fatalln(err)
 		}
-	} else {
-		var fn func(string, fs.DirEntry) error
-		if Opts.Date {
-			fn = filterFn(filters, res, optsHasDate)
-		} else {
-			fn = filterFn(filters, res)
+	case Opts.ToDepth > 0 || Opts.FromDepth > 0:
+		if Opts.ToDepth == 0 {
+			Opts.ToDepth = math.MaxInt64
 		}
-
-		stat, err := os.Stat(fp)
-		if err != nil || !stat.IsDir() {
-			log.Fatalln(err)
+		if Opts.FromDepth == 0 {
+			Opts.FromDepth = math.MinInt64
 		}
+		depthDir(Opts.ToDepth, Opts.FromDepth, fn)
+	default:
 		entries, err := os.ReadDir(fp)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
 			filep := filepath.Join(fp, entry.Name())
-			err = fn(filep, entry)
+			err = fn(filep, entry, nil)
 			if err != nil {
 				log.Fatalln(err)
 			}
 		}
 	}
 
-	return res
+}
+
+var (
+	to   int
+	from int
+	rfn  fs.WalkDirFunc
+)
+
+func depthDir(To, From int, fn fs.WalkDirFunc) {
+	to = To
+	from = From
+	rfn = fn
+	dirFn(fp, 0)
+}
+func dirFn(path string, depth int) {
+	if depth < from || depth > to {
+		return
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for _, entry := range entries {
+		filep := filepath.Join(path, entry.Name())
+		if entry.IsDir() {
+			dirFn(filep, depth+1)
+		}
+		err = rfn(filep, entry, nil)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 }
 
 // updateTime updates the unix timestamp boundaries.
@@ -119,6 +151,22 @@ func updateTime(t int64) {
 
 func collectFilters() []filter {
 	var fns []filter
+
+	switch {
+	case Opts.DirOnly:
+		fns = append(fns, func(_ *finfo, d fs.DirEntry) bool {
+			return d.IsDir()
+		})
+	case Opts.FileOnly:
+		fns = append(fns, func(_ *finfo, d fs.DirEntry) bool {
+			return !d.IsDir()
+		})
+	}
+
+	if Opts.Date {
+		fns = append(fns, addDate)
+	}
+
 	if (len(Opts.Search) + len(Opts.Include) + len(Opts.Exclude) + len(Opts.Ignore)) > 0 {
 		var include []contentType
 		var exclude []contentType
@@ -152,41 +200,32 @@ func collectProcess() []process {
 	return fns
 }
 
-type dirEntryfns func(*finfo, fs.DirEntry)
+type filter func(*finfo, fs.DirEntry) bool
 
-func optsHasDate(fi *finfo, d fs.DirEntry) {
+func addDate(fi *finfo, d fs.DirEntry) bool {
 	fileinfo, err := d.Info()
 	if err != nil || fileinfo == nil {
-		return
+		return false
 	}
 
 	info, err := d.Info()
 	if err != nil {
-		return
+		return false
 	}
 	unixTime := info.ModTime().Unix()
 	updateTime(unixTime)
 	fi.mod = unixTime
+	return true
 }
 
-type result struct {
-	files []*finfo
-}
-
-func filterFnRecursive(fns []filter, res *result, dirEntryfns ...dirEntryfns) fs.WalkDirFunc {
+func buildWalkDirFn(fns []filter, res *result) func(string, fs.DirEntry, error) error {
 	return func(path string, d fs.DirEntry, err error) error {
 		if d == nil || err != nil {
-			return err
-		}
-		if d.IsDir() {
 			return nil
 		}
 		fi := &finfo{name: d.Name(), path: path}
-		for _, fn := range dirEntryfns {
-			fn(fi, d)
-		}
 		for _, fn := range fns {
-			res := fn(fi)
+			res := fn(fi, d)
 			if !res {
 				return nil
 			}
@@ -195,31 +234,9 @@ func filterFnRecursive(fns []filter, res *result, dirEntryfns ...dirEntryfns) fs
 		return nil
 	}
 }
-
-func filterFn(fns []filter, res *result, dirEntryfns ...dirEntryfns) func(string, fs.DirEntry) error {
-	return func(path string, d fs.DirEntry) error {
-		if d.IsDir() {
-			return nil
-		}
-		fi := &finfo{name: d.Name(), path: path}
-		for _, fn := range dirEntryfns {
-			fn(fi, d)
-		}
-		for _, fn := range fns {
-			res := fn(fi)
-			if !res {
-				return nil
-			}
-		}
-		res.files = append(res.files, fi)
-		return nil
-	}
-}
-
-type filter func(*finfo) bool
 
 func filterList(include []contentType, exclude []contentType, ignore []string, search []string) filter {
-	return func(fi *finfo) bool {
+	return func(fi *finfo, _ fs.DirEntry) bool {
 		for _, s := range search {
 			if !strings.Contains(fi.name, s) {
 				return false
@@ -273,7 +290,6 @@ const (
 
 func sortProcess(sorting sortBy, ordering orderTo) process {
 	return func(filenames []*finfo) []*finfo {
-		fmt.Println("SORTING")
 		switch sorting {
 		case byDate:
 			if ordering == toAsc {
@@ -298,7 +314,6 @@ func sortProcess(sorting sortBy, ordering orderTo) process {
 
 func sliceProcess(pattern string) process {
 	return func(filenames []*finfo) []*finfo {
-		fmt.Println("SLICING")
 		return sliceArray(pattern, filenames)
 	}
 }

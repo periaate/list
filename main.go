@@ -15,11 +15,17 @@ type Options struct {
 	Absolute bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
 	Recurse  bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories"`
 
+	ToDepth   int `short:"T" long:"todepth" description:"List files to a certain depth."`
+	FromDepth int `short:"F" long:"fromdepth" description:"List files from a certain depth."`
+
 	// filters
 	Include []string `short:"i" long:"include" description:"File type inclusion: image, video, audio"`
 	Exclude []string `short:"e" long:"exclude" description:"File type exclusion: image, video, audio."`
-	Ignore  []string `short:"z" long:"ignore" description:"Ignores all paths which include any given strings."`
+	Ignore  []string `short:"I" long:"ignore" description:"Ignores all paths which include any given strings."`
 	Search  []string `short:"s" long:"search" description:"Only include paths which include any given strings."`
+
+	DirOnly  bool `long:"dirs" description:"Only include directories in the result."`
+	FileOnly bool `long:"files" description:"Only include files in the result."`
 
 	// process
 	Ascending bool   `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
