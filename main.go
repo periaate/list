@@ -32,6 +32,8 @@ type Options struct {
 	Ascending bool     `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date      bool     `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
 	Slice     string   `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing."`
+
+	Sort bool `short:"n" long:"sort" description:"Sort the result. Files are ordered by filename by default."`
 }
 
 func main() {

@@ -182,42 +182,6 @@ func collectFilters() []filter {
 	return fns
 }
 
-func reverse(filenames []*finfo) []*finfo {
-	for i := 0; i < len(filenames)/2; i++ {
-		j := len(filenames) - i - 1
-		filenames[i], filenames[j] = filenames[j], filenames[i]
-	}
-	return filenames
-}
-
-func collectProcess() []process {
-	var fns []process
-
-	switch {
-	case len(Opts.Query) > 0:
-		fns = append(fns, queryProcess)
-		if Opts.Ascending {
-			fns = append(fns, reverse)
-		}
-	case Opts.Ascending, Opts.Date:
-		sorting := byName
-		order := toDesc
-		if Opts.Ascending {
-			order = toAsc
-		}
-		if Opts.Date {
-			sorting = byDate
-		}
-		fns = append(fns, sortProcess(sorting, order))
-	}
-
-	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
-	if len(Opts.Slice) >= 4 {
-		fns = append(fns, sliceProcess(Opts.Slice))
-	}
-	return fns
-}
-
 type filter func(*finfo, fs.DirEntry) bool
 
 func addDate(fi *finfo, d fs.DirEntry) bool {
@@ -306,23 +270,56 @@ const (
 	toAsc
 )
 
+func reverse(filenames []*finfo) []*finfo {
+	for i := 0; i < len(filenames)/2; i++ {
+		j := len(filenames) - i - 1
+		filenames[i], filenames[j] = filenames[j], filenames[i]
+	}
+	return filenames
+}
+
+func collectProcess() []process {
+	var fns []process
+
+	switch {
+	case len(Opts.Query) > 0:
+		fns = append(fns, queryProcess)
+		if Opts.Ascending {
+			fns = append(fns, reverse)
+		}
+	case Opts.Ascending || Opts.Date || Opts.Sort:
+		sorting := byName
+		order := toDesc
+		if Opts.Ascending {
+			order = toAsc
+		}
+		if Opts.Date {
+			sorting = byDate
+		}
+		fns = append(fns, sortProcess(sorting, order))
+	}
+
+	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
+	if len(Opts.Slice) >= 4 {
+		fns = append(fns, sliceProcess(Opts.Slice))
+	}
+	return fns
+}
+
 func sortProcess(sorting sortBy, ordering orderTo) process {
 	return func(filenames []*finfo) []*finfo {
 		switch sorting {
 		case byDate:
+			filenames = countingSort(filenames, lowestTime, highestTime)
 			if ordering == toAsc {
-				return countingSortAsc(filenames, lowestTime, highestTime)
+				return reverse(filenames)
 			}
-			return countingSortDesc(filenames, lowestTime, highestTime)
 		case byName:
+			sort.Slice(filenames, func(i, j int) bool {
+				return natural(filenames[j].name, filenames[i].name)
+			})
 			if ordering == toAsc {
-				sort.Slice(filenames, func(i, j int) bool {
-					return naturalAsc(filenames[i].name, filenames[j].name)
-				})
-			} else {
-				sort.Slice(filenames, func(i, j int) bool {
-					return naturalDesc(filenames[j].name, filenames[i].name)
-				})
+				return reverse(filenames)
 			}
 		}
 
