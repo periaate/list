@@ -36,7 +36,6 @@ import (
 // print - printing the result
 // absolute paths -A
 
-// onhold
 // dir only
 // file only
 
@@ -219,10 +218,15 @@ func buildWalkDirFn(fns []filter, res *result) func(string, fs.DirEntry, error) 
 
 func filterList(include []contentType, exclude []contentType, ignore []string, search []string) filter {
 	return func(fi *finfo, _ fs.DirEntry) bool {
+		var any bool
 		for _, s := range search {
-			if !strings.Contains(fi.name, s) {
-				return false
+			if strings.Contains(fi.name, s) {
+				any = true
+				break
 			}
+		}
+		if len(search) > 0 && !any {
+			return false
 		}
 
 		for _, inc := range include {

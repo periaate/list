@@ -1,8 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 
 	gf "github.com/jessevdk/go-flags"
 )
@@ -31,9 +36,12 @@ type Options struct {
 	Query     []string `short:"q" long:"query" description:"Fuzzy search query. Results will be ordered by their score."`
 	Ascending bool     `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 	Date      bool     `short:"d" long:"date" description:"Results will be ordered by their modified time. Files are ordered by filename by default"`
-	Slice     string   `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing."`
+	Slice     string   `short:"S" long:"slice" description:"Slice [{from}:{to}]. Supports negative indexing. Can be used without a flag as the last argument."`
 
 	Sort bool `short:"n" long:"sort" description:"Sort the result. Files are ordered by filename by default."`
+
+	Debug bool `short:"D" long:"debug" description:"Debug flag enables debug logging."`
+	Quiet bool `short:"Q" long:"quiet" description:"Quiet flag disables printing results."`
 }
 
 func main() {
@@ -47,5 +55,57 @@ func main() {
 	}
 	Args = args
 
+	if Opts.Debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	implicitSlice()
+
 	List()
+}
+
+func implicitSlice() {
+	if Opts.Slice != "" {
+		slog.Debug("slice is already set. ignoring implicit slice.")
+		return
+	}
+
+	if len(Args) == 0 {
+		slog.Debug("implicit slice found no args")
+		return
+	}
+
+	isSlice(Args[len(Args)-1])
+}
+
+func isSlice(inp string) {
+	re := regexp.MustCompile(`^\[\-?\d*:\-?\d*\]$`)
+	if !re.MatchString(inp) {
+		slog.Debug("regex found no matches for slices")
+		return
+	}
+
+	inp = strings.Trim(inp, "[]")
+	slice := strings.Split(inp, ":")
+	var sl [2]string
+	for i, s := range slice {
+		if i > 1 {
+			continue
+		}
+		if s == "" {
+			continue
+		}
+		if s == "-" {
+			continue
+		}
+
+		if _, err := strconv.Atoi(s); err != nil {
+			return
+		}
+
+		sl[i] = s
+	}
+
+	Opts.Slice = fmt.Sprintf("[%s:%s]", sl[0], sl[1])
+	Args = Args[:len(Args)-1]
 }

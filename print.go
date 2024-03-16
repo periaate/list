@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -10,6 +11,10 @@ import (
 const bufLength = 500
 
 func printWithBuf(files []*finfo) {
+	if Opts.Quiet {
+		slog.Debug("quiet flag is set, returning from print function")
+		return
+	}
 	// I am unsure of how large this buffer should be. Testing or profiling might be necessary to
 	// find what is reasonable. The default buffer size was flushing automatically before being told to.
 	// This might be okay in itself, and we might not need to manually set a buffer ta all (or flush).
