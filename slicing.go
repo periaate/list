@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
-	"os"
 	"strconv"
 	"strings"
 
@@ -48,8 +46,6 @@ func sliceArray[T any](pattern string, input []T) []T {
 	start := Clamp(iar[0], iar[0], len(input)-1)
 	end := Clamp(iar[1], iar[0], len(input)-1)
 	start = Clamp(start, 0, end)
-	fmt.Println(start, end, len(input)-1, len(input))
-	os.Exit(1)
 
 	return input[start:end]
 }
