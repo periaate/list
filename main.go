@@ -1,13 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
-	"regexp"
-	"strconv"
-	"strings"
 
 	gf "github.com/jessevdk/go-flags"
 )
@@ -75,37 +71,10 @@ func implicitSlice() {
 		return
 	}
 
-	isSlice(Args[len(Args)-1])
-}
+	L := len(Args) - 1
 
-func isSlice(inp string) {
-	re := regexp.MustCompile(`^\[\-?\d*:\-?\d*\]$`)
-	if !re.MatchString(inp) {
-		slog.Debug("regex found no matches for slices")
-		return
+	if _, _, ok := parseSlice(Args[L]); ok {
+		Opts.Slice = Args[L]
+		Args = Args[:L]
 	}
-
-	inp = strings.Trim(inp, "[]")
-	slice := strings.Split(inp, ":")
-	var sl [2]string
-	for i, s := range slice {
-		if i > 1 {
-			continue
-		}
-		if s == "" {
-			continue
-		}
-		if s == "-" {
-			continue
-		}
-
-		if _, err := strconv.Atoi(s); err != nil {
-			return
-		}
-
-		sl[i] = s
-	}
-
-	Opts.Slice = fmt.Sprintf("[%s:%s]", sl[0], sl[1])
-	Args = Args[:len(Args)-1]
 }

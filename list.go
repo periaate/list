@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -304,7 +303,7 @@ func collectProcess() []process {
 	}
 
 	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
-	if len(Opts.Slice) >= 4 {
+	if len(Opts.Slice) >= 3 {
 		fns = append(fns, sliceProcess(Opts.Slice))
 	}
 	return fns
@@ -335,54 +334,4 @@ func sliceProcess(pattern string) process {
 	return func(filenames []*finfo) []*finfo {
 		return sliceArray(pattern, filenames)
 	}
-}
-
-// sliceArray takes a string pattern and a generic slice, then returns a slice according to the pattern.
-func sliceArray[T any](pattern string, input []T) []T {
-	// Default slice indices
-	start, end := 0, len(input)
-
-	// Remove brackets and split by colon
-	trimPattern := strings.Trim(pattern, "[]")
-	parts := strings.Split(trimPattern, ":")
-
-	// Parse start index if it exists
-	if parts[0] != "" {
-		parsedStart, err := strconv.Atoi(parts[0])
-		if err == nil {
-			start = parsedStart
-		}
-
-		// If the start index is negative, adjust it to be relative to the end of the slice
-		if parsedStart < 0 {
-			start = len(input) + parsedStart
-		}
-	}
-
-	// Parse end index if it exists
-	if len(parts) > 1 && parts[1] != "" {
-		parsedEnd, err := strconv.Atoi(parts[1])
-		if err == nil {
-			end = parsedEnd
-		}
-
-		// If the end index is negative, adjust it to be relative to the end of the slice
-		if parsedEnd < 0 {
-			end = len(input) + parsedEnd
-		}
-	}
-
-	// Adjust indices to prevent out-of-bounds slicing
-	if start < 0 {
-		start = 0
-	}
-	if end > len(input) {
-		end = len(input)
-	}
-	if start > end {
-		start = end
-	}
-
-	// Return the sliced input
-	return input[start:end]
 }
