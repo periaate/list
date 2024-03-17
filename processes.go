@@ -47,8 +47,8 @@ func collectProcess() []process {
 	}
 
 	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
-	if len(Opts.Slice) >= 3 {
-		fns = append(fns, sliceProcess(Opts.Slice))
+	if len(Opts.Select) >= 3 {
+		fns = append(fns, sliceProcess(Opts.Select))
 	}
 	return fns
 }
