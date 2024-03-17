@@ -1,8 +1,50 @@
 package main
 
-import "path/filepath"
+import (
+	"archive/zip"
+	"io/fs"
+	"os"
+	"path/filepath"
+)
+
+type filter func(*finfo, fs.DirEntry) bool
+type process func(filenames []*finfo) []*finfo
 
 type contentType uint8
+type sortBy uint8
+type orderTo uint8
+
+const (
+	other contentType = (1 << iota) - 1
+	image
+	video
+	audio
+
+	byDef sortBy = iota
+	byDate
+	byName
+
+	toDesc orderTo = iota
+	toAsc
+)
+
+type result struct{ files []*finfo }
+
+type ZipEntry struct{ *zip.File }
+
+func (z ZipEntry) Name() string               { return z.File.Name }
+func (z ZipEntry) IsDir() bool                { return z.File.FileInfo().IsDir() }
+func (z ZipEntry) Type() fs.FileMode          { return z.File.FileInfo().Mode() }
+func (z ZipEntry) Info() (fs.FileInfo, error) { return z.File.FileInfo(), nil }
+
+// check that zipentry is os.DirEntry
+var Z os.DirEntry = ZipEntry{}
+
+type finfo struct {
+	name string
+	path string // includes name, relative path to cwd
+	mod  int64  // unix timestamp
+}
 
 func getContentType(filename string) contentType {
 	ext := filepath.Ext(filename)
@@ -24,13 +66,6 @@ func stringToContentType(s string) contentType {
 		return other
 	}
 }
-
-const (
-	other contentType = (1 << iota) - 1
-	image
-	video
-	audio
-)
 
 var contentTypes = map[string]contentType{
 	// image
