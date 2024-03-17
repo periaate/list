@@ -40,7 +40,7 @@ func Traverse(wfn fs.WalkDirFunc) {
 					continue
 				}
 
-				if depth <= Opts.FromDepth {
+				if depth < Opts.FromDepth {
 					continue
 				}
 

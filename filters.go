@@ -65,14 +65,30 @@ func addDate(fi *finfo, d fs.DirEntry) bool {
 }
 
 func filterList(include []contentType, exclude []contentType, ignore []string, search []string) filter {
-	return func(fi *finfo, _ fs.DirEntry) bool {
-		var any bool
-		for _, s := range search {
-			if strings.Contains(fi.name, s) {
-				any = true
-				break
+	// to avoid checking flags for every element.
+	var searchFn func(string) bool
+	if Opts.SearchAnd {
+		searchFn = func(str string) bool {
+			for _, sub := range search {
+				if !strings.Contains(str, sub) {
+					return false
+				}
 			}
+			return true
 		}
+	} else {
+		searchFn = func(str string) bool {
+			for _, sub := range search {
+				if strings.Contains(str, sub) {
+					return true
+				}
+			}
+			return false
+		}
+	}
+
+	return func(fi *finfo, _ fs.DirEntry) bool {
+		any := searchFn(fi.name)
 		if len(search) > 0 && !any {
 			return false
 		}
