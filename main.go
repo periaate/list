@@ -38,6 +38,7 @@ type ProcessOpts struct {
 	Sort      bool     `short:"n" long:"sort" description:"Sort the result. Files are ordered by filename by default."`
 	Select    string   `long:"select" description:"Select a single element or a range of elements. Usage: [{index}] [{from}:{to}] Supports negative indexing. Can be used without a flag as the last argument."`
 }
+
 type Printing struct {
 	Absolute bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
 	Debug    bool `short:"D" long:"debug" description:"Debug flag enables debug logging."`
@@ -46,12 +47,9 @@ type Printing struct {
 
 type Options struct {
 	ListingOpts `group:"Traversal options - Determines how the traversal is done."`
-
-	FilterOpts `group:"Filtering options - Applied while traversing, called on every entry found."`
-
+	FilterOpts  `group:"Filtering options - Applied while traversing, called on every entry found."`
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
-
-	Printing `group:"Printing options - Determines how the results are printed."`
+	Printing    `group:"Printing options - Determines how the results are printed."`
 }
 
 func main() {

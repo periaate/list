@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 
@@ -9,10 +11,10 @@ import (
 )
 
 func Clamp[T constraints.Ordered](val, lower, upper T) (res T) {
-	if val > upper {
+	if val >= upper {
 		return upper
 	}
-	if val < lower {
+	if val <= lower {
 		return lower
 	}
 	return val
@@ -20,6 +22,9 @@ func Clamp[T constraints.Ordered](val, lower, upper T) (res T) {
 
 // sliceArray takes a string pattern and a generic slice, then returns a slice according to the pattern.
 func sliceArray[T any](pattern string, input []T) []T {
+	if len(input) == 0 {
+		return input
+	}
 	// // Default slice indices
 	iar, isSlice, ok := parseSlice(pattern)
 	if !ok {
@@ -40,8 +45,11 @@ func sliceArray[T any](pattern string, input []T) []T {
 		iar[1] = len(input)
 	}
 
-	start := Clamp(iar[0], iar[0], iar[1])
+	start := Clamp(iar[0], iar[0], len(input)-1)
 	end := Clamp(iar[1], iar[0], len(input)-1)
+	start = Clamp(start, 0, end)
+	fmt.Println(start, end, len(input)-1, len(input))
+	os.Exit(1)
 
 	return input[start:end]
 }

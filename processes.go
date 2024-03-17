@@ -57,7 +57,10 @@ func sortProcess(sorting sortBy, ordering orderTo) process {
 	return func(filenames []*finfo) []*finfo {
 		switch sorting {
 		case byDate:
-			filenames = countingSort(filenames, lowestTime, highestTime)
+			// filenames = countingSort(filenames, lowestTime, highestTime)
+			sort.Slice(filenames, func(i, j int) bool {
+				return filenames[j].mod < filenames[i].mod
+			})
 			if ordering == toAsc {
 				return reverse(filenames)
 			}
