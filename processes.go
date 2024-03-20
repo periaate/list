@@ -1,14 +1,7 @@
 package main
 
 import (
-	"math"
 	"sort"
-)
-
-// Counting sort should only be used if there is a large number of elements or a low gap between high and low.
-var (
-	highestTime int64                 // Highest found unix timestamp.
-	lowestTime  int64 = math.MaxInt64 // Lowest found unix timestamp. Uses MaxInt64 to make comparisons work.
 )
 
 func ProcessList(res *result, fns []process) {
@@ -34,20 +27,21 @@ func collectProcess() []process {
 		if Opts.Ascending {
 			fns = append(fns, reverse)
 		}
-	case Opts.Ascending || Opts.Date || Opts.Sort:
-		sorting := byName
+	case Opts.Ascending || len(Opts.Sort) != 0:
+		sorting := strToSortBy(Opts.Sort)
+
+		if sorting == byNone {
+			break
+		}
+
 		order := toDesc
 		if Opts.Ascending {
 			order = toAsc
 		}
-		if Opts.Date {
-			sorting = byDate
-		}
 		fns = append(fns, sortProcess(sorting, order))
 	}
 
-	// 4 is the minimum length of a slice pattern, as [:n] or [n:] are the smallest possible patterns.
-	if len(Opts.Select) >= 3 {
+	if len(Opts.Select) >= len("[0]") {
 		fns = append(fns, sliceProcess(Opts.Select))
 	}
 	return fns
@@ -55,22 +49,20 @@ func collectProcess() []process {
 
 func sortProcess(sorting sortBy, ordering orderTo) process {
 	return func(filenames []*finfo) []*finfo {
-		switch sorting {
-		case byDate:
-			// filenames = countingSort(filenames, lowestTime, highestTime)
-			sort.Slice(filenames, func(i, j int) bool {
-				return filenames[j].mod < filenames[i].mod
-			})
-			if ordering == toAsc {
-				return reverse(filenames)
-			}
-		case byName:
+		if sorting == byName {
 			sort.Slice(filenames, func(i, j int) bool {
 				return natural(filenames[j].name, filenames[i].name)
 			})
 			if ordering == toAsc {
 				return reverse(filenames)
 			}
+		}
+
+		sort.Slice(filenames, func(i, j int) bool {
+			return filenames[j].vany < filenames[i].vany
+		})
+		if ordering == toAsc {
+			return reverse(filenames)
 		}
 
 		return filenames

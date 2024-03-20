@@ -7,4 +7,7 @@ require (
 	golang.org/x/exp v0.0.0-20240314144324-c7f7c6466f7f
 )
 
-require golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4 // indirect
+require (
+	github.com/atotto/clipboard v0.1.4
+	golang.org/x/sys v0.15.0 // indirect
+)

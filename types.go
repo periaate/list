@@ -20,13 +20,31 @@ const (
 	video
 	audio
 
-	byDef sortBy = iota
-	byDate
+	byNone sortBy = iota
+	byMod
+	bySize
 	byName
 
 	toDesc orderTo = iota
 	toAsc
 )
+
+func strToSortBy(s string) sortBy {
+	switch s {
+	case "date":
+		return byMod
+	case "mod":
+		return byMod
+	case "size":
+		return bySize
+	case "name":
+		return byName
+	case "none":
+		fallthrough
+	default:
+		return byNone
+	}
+}
 
 type result struct{ files []*finfo }
 
@@ -43,7 +61,7 @@ var Z os.DirEntry = ZipEntry{}
 type finfo struct {
 	name string
 	path string // includes name, relative path to cwd
-	mod  int64  // unix timestamp
+	vany int64  // any numeric value, used for sorting
 }
 
 func getContentType(filename string) contentType {

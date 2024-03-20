@@ -5,9 +5,6 @@ import (
 	"strings"
 )
 
-// updateTime updates the unix timestamp boundaries.
-func updateTime(t int64) {
-}
 func collectFilters() []filter {
 	var fns []filter
 
@@ -22,8 +19,11 @@ func collectFilters() []filter {
 		})
 	}
 
-	if Opts.Date {
-		fns = append(fns, addDate)
+	switch strToSortBy(Opts.Sort) {
+	case byMod:
+		fns = append(fns, addModT)
+	case bySize:
+		fns = append(fns, addSize)
 	}
 
 	if (len(Opts.Search) + len(Opts.Include) + len(Opts.Exclude) + len(Opts.Ignore)) > 0 {
@@ -41,7 +41,7 @@ func collectFilters() []filter {
 	return fns
 }
 
-func addDate(fi *finfo, d fs.DirEntry) bool {
+func addModT(fi *finfo, d fs.DirEntry) bool {
 	fileinfo, err := d.Info()
 	if err != nil || fileinfo == nil {
 		return false
@@ -52,15 +52,18 @@ func addDate(fi *finfo, d fs.DirEntry) bool {
 		return false
 	}
 	unixTime := info.ModTime().Unix()
-	updateTime(unixTime)
 
-	if unixTime > highestTime {
-		highestTime = unixTime
+	fi.vany = unixTime
+	return true
+}
+
+func addSize(fi *finfo, d fs.DirEntry) bool {
+	fileinfo, err := d.Info()
+	if err != nil || fileinfo == nil {
+		return false
 	}
-	if unixTime < lowestTime {
-		lowestTime = unixTime
-	}
-	fi.mod = unixTime
+
+	fi.vany = fileinfo.Size()
 	return true
 }
 

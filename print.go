@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/atotto/clipboard"
 )
 
 // the interval of flushing the buffer
@@ -15,10 +17,13 @@ func printWithBuf(files []*finfo) {
 		slog.Debug("quiet flag is set, returning from print function")
 		return
 	}
+
 	// I am unsure of how large this buffer should be. Testing or profiling might be necessary to
 	// find what is reasonable. The default buffer size was flushing automatically before being told to.
 	// This might be okay in itself, and we might not need to manually set a buffer ta all (or flush).
-	buf := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
+	var str []byte
+
+	w := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
 
 	for i, file := range files {
 		fp := filepath.ToSlash(file.path)
@@ -26,11 +31,24 @@ func printWithBuf(files []*finfo) {
 			fp, _ = filepath.Abs(file.path)
 			fp = filepath.ToSlash(fp)
 		}
+		res := fp + "\n"
 
-		buf.WriteString(fp + "\n")
+		if Opts.Clipboard {
+			str = append(str, res...)
+		}
+
+		w.WriteString(res)
 		if i%bufLength == 0 {
-			buf.Flush()
+			w.Flush()
 		}
 	}
-	buf.Flush()
+
+	w.Flush()
+
+	if Opts.Clipboard {
+		if str[len(str)-1] == '\n' {
+			str = str[:len(str)-1]
+		}
+		clipboard.WriteAll(string(str))
+	}
 }
