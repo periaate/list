@@ -70,7 +70,7 @@ func main() {
 	}
 	args = rest
 
-	if Opts.Recurse {
+	if Opts.ToDepth == 0 && Opts.Recurse {
 		Opts.ToDepth = math.MaxInt64
 	}
 
