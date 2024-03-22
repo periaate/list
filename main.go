@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"log/slog"
 	"math"
@@ -79,6 +80,10 @@ func main() {
 	}
 
 	implicitSlice()
+	pipedValues := readPipe()
+	if len(pipedValues) != 0 {
+		args = append(args, pipedValues...)
+	}
 
 	if len(args) == 0 {
 		args = append(args, "./")
@@ -111,4 +116,15 @@ func implicitSlice() {
 		Opts.Select = args[L]
 		args = args[:L]
 	}
+}
+
+func readPipe() (res []string) {
+	fileInfo, _ := os.Stdin.Stat()
+	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			res = append(res, scanner.Text())
+		}
+	}
+	return
 }

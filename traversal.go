@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"io/fs"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,7 @@ func Traverse(wfn fs.WalkDirFunc) {
 
 			entries, err := os.ReadDir(d)
 			if err != nil {
+				slog.Debug("found a non-directory argument", "argument", d)
 				continue
 			}
 			for _, entry := range entries {
