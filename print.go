@@ -13,8 +13,17 @@ import (
 const bufLength = 500
 
 func printWithBuf(files []*finfo) {
+	if len(files) == 0 {
+		return
+	}
 	if Opts.Quiet {
 		slog.Debug("quiet flag is set, returning from print function")
+		return
+	}
+
+	if Opts.Tree {
+		ftree := AddFilesToTree(files)
+		ftree.PrintTree("")
 		return
 	}
 

@@ -49,6 +49,7 @@ type Printing struct {
 	Debug     bool `short:"D" long:"debug" description:"Debug flag enables debug logging."`
 	Quiet     bool `short:"Q" long:"quiet" description:"Quiet flag disables printing results."`
 	Clipboard bool `short:"c" long:"clipboard" description:"Copy the result to the clipboard."`
+	Tree      bool `long:"tree" description:"Prints as tree."`
 }
 
 type Options struct {
