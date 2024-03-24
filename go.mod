@@ -9,5 +9,6 @@ require (
 
 require (
 	github.com/atotto/clipboard v0.1.4
+	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb
 	golang.org/x/sys v0.15.0 // indirect
 )

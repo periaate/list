@@ -2,6 +2,8 @@ package main
 
 import (
 	"sort"
+
+	"github.com/facette/natsort"
 )
 
 func ProcessList(res *result, fns []process) {
@@ -51,11 +53,14 @@ func sortProcess(sorting sortBy, ordering orderTo) process {
 	return func(filenames []*finfo) []*finfo {
 		if sorting == byName {
 			sort.Slice(filenames, func(i, j int) bool {
-				return natural(filenames[j].name, filenames[i].name)
+				return natsort.Compare(filenames[i].name, filenames[j].name)
+				// return natural(filenames[j].name, filenames[i].name)
 			})
 			if ordering == toAsc {
 				return reverse(filenames)
 			}
+
+			return filenames
 		}
 
 		sort.Slice(filenames, func(i, j int) bool {

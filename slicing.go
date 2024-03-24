@@ -31,20 +31,21 @@ func sliceArray[T any](pattern string, input []T) []T {
 
 	for i, v := range iar {
 		if v < 0 {
-			iar[i] = len(input) - 1 + v
+			iar[i] = len(input) + v
 		}
-		iar[i] = Clamp(iar[i], 0, len(input)-1)
+		iar[i] = Clamp(iar[i], 0, len(input))
 	}
 
 	if !isSlice {
 		return []T{input[iar[0]]}
 	}
 	if iar[1] == 0 {
-		iar[1] = len(input)
+		iar[1] = len(input) - 1
 	}
+	iar[1]++
 
-	start := Clamp(iar[0], iar[0], len(input)-1)
-	end := Clamp(iar[1], iar[0], len(input)-1)
+	start := Clamp(iar[0], iar[0], len(input))
+	end := Clamp(iar[1], iar[0], len(input))
 	start = Clamp(start, 0, end)
 
 	return input[start:end]

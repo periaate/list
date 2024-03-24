@@ -20,8 +20,9 @@ func Traverse(wfn fs.WalkDirFunc) {
 		}
 		var nd []string
 		for _, d := range dirs {
+			ext := filepath.Ext(d)
 
-			if filepath.Ext(d) == ".zip" {
+			if ext == ".zip" || ext == ".cbz" {
 				traverseZip(d, depth, wfn)
 				continue
 			}
