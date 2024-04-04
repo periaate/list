@@ -1,7 +1,8 @@
-package main
+package list
 
 import (
 	"bufio"
+	"list/cfg"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -12,16 +13,16 @@ import (
 // the interval of flushing the buffer
 const bufLength = 500
 
-func printWithBuf(files []*finfo) {
+func PrintWithBuf(files []*Finfo) {
 	if len(files) == 0 {
 		return
 	}
-	if Opts.Quiet {
+	if cfg.Opts.Quiet {
 		slog.Debug("quiet flag is set, returning from print function")
 		return
 	}
 
-	if Opts.Tree {
+	if cfg.Opts.Tree {
 		ftree := AddFilesToTree(files)
 		ftree.PrintTree("")
 		return
@@ -36,13 +37,13 @@ func printWithBuf(files []*finfo) {
 
 	for i, file := range files {
 		fp := filepath.ToSlash(file.path)
-		if Opts.Absolute {
+		if cfg.Opts.Absolute {
 			fp, _ = filepath.Abs(file.path)
 			fp = filepath.ToSlash(fp)
 		}
 		res := fp + "\n"
 
-		if Opts.Clipboard {
+		if cfg.Opts.Clipboard {
 			str = append(str, res...)
 		}
 
@@ -54,7 +55,7 @@ func printWithBuf(files []*finfo) {
 
 	w.Flush()
 
-	if Opts.Clipboard {
+	if cfg.Opts.Clipboard {
 		if str[len(str)-1] == '\n' {
 			str = str[:len(str)-1]
 		}

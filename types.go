@@ -1,4 +1,4 @@
-package main
+package list
 
 import (
 	"archive/zip"
@@ -7,18 +7,19 @@ import (
 	"path/filepath"
 )
 
-type filter func(*finfo, fs.DirEntry) bool
-type process func(filenames []*finfo) []*finfo
+type filter func(*Finfo, fs.DirEntry) bool
+type process func(filenames []*Finfo) []*Finfo
 
-type contentType uint8
 type sortBy uint8
 type orderTo uint8
 
 const (
-	other contentType = (1 << iota) - 1
-	image
-	video
-	audio
+	other   = "other"
+	image   = "image"
+	video   = "video"
+	audio   = "audio"
+	archive = "archive"
+	zipLike = "zip"
 
 	byNone sortBy = iota
 	byMod
@@ -29,7 +30,7 @@ const (
 	toAsc
 )
 
-func strToSortBy(s string) sortBy {
+func StrToSortBy(s string) sortBy {
 	switch s {
 	case "date":
 		return byMod
@@ -46,7 +47,7 @@ func strToSortBy(s string) sortBy {
 	}
 }
 
-type result struct{ files []*finfo }
+type Result struct{ Files []*Finfo }
 
 type ZipEntry struct{ *zip.File }
 
@@ -58,62 +59,37 @@ func (z ZipEntry) Info() (fs.FileInfo, error) { return z.File.FileInfo(), nil }
 // check that zipentry is os.DirEntry
 var Z os.DirEntry = ZipEntry{}
 
-type finfo struct {
+type Finfo struct {
 	name string
 	path string // includes name, relative path to cwd
 	vany int64  // any numeric value, used for sorting
 }
 
-func getContentType(filename string) contentType {
+func GetContentTypes(filename string) (res arrSet[string]) {
 	ext := filepath.Ext(filename)
-	if t, ok := contentTypes[ext]; ok {
-		return t
+	for k, v := range cntType {
+		if v.contains(ext) {
+			res = append(res, k)
+		}
 	}
-	return other
+	return
 }
 
-func stringToContentType(s string) contentType {
-	switch s {
-	case "image":
-		return image
-	case "video":
-		return video
-	case "audio":
-		return audio
-	default:
-		return other
+type arrSet[T comparable] []T
+
+func (a arrSet[T]) contains(ext T) bool {
+	for _, v := range a {
+		if v == ext {
+			return true
+		}
 	}
+	return false
 }
 
-var contentTypes = map[string]contentType{
-	// image
-	".jpg":  image,
-	".jpeg": image,
-	".png":  image,
-	".apng": image,
-	".gif":  image,
-	".bmp":  image,
-	".webp": image,
-	".avif": image,
-	".jxl":  image,
-	".tiff": image,
-
-	// video
-	".mp4":  video,
-	".m4v":  video,
-	".webm": video,
-	".mkv":  video,
-	".avi":  video,
-	".mov":  video,
-	".mpg":  video,
-	".mpeg": video,
-
-	// audio
-	".m4a":  audio,
-	".opus": audio,
-	".ogg":  audio,
-	".mp3":  audio,
-	".flac": audio,
-	".wav":  audio,
-	".aac":  audio,
+var cntType = map[string]arrSet[string]{
+	image:   {".jpg", ".jpeg", ".png", ".apng", ".gif", ".bmp", ".webp", ".avif", ".jxl", ".tiff"},
+	video:   {".mp4", ".m4v", ".webm", ".mkv", ".avi", ".mov", ".mpg", ".mpeg"},
+	audio:   {".m4a", ".opus", ".ogg", ".mp3", ".flac", ".wav", ".aac"},
+	archive: {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".lz4", ".zst", ".lzma", ".lzip", ".lz", ".cbz"},
+	zipLike: {".zip", ".cbz", ".cbr"},
 }

@@ -1,6 +1,7 @@
-package main
+package list
 
 import (
+	"list/cfg"
 	"sort"
 	"strings"
 )
@@ -26,12 +27,12 @@ func (s scoredFiles[T]) Items() []T {
 	return items
 }
 
-func queryProcess(filenames []*finfo) []*finfo {
-	scorer := getScoringFunction(Opts.Query)
-	scorable := scoredFiles[*finfo](make([]scored[*finfo], len(filenames)))
+func QueryProcess(filenames []*Finfo) []*Finfo {
+	scorer := getScoringFunction(cfg.Opts.Query)
+	scorable := scoredFiles[*Finfo](make([]scored[*Finfo], len(filenames)))
 	for i, file := range filenames {
 		score := scorer(file.name)
-		scorable[i] = scored[*finfo]{file, score}
+		scorable[i] = scored[*Finfo]{file, score}
 	}
 
 	SortByScore(scorable)

@@ -1,18 +1,8 @@
-package main
+package cfg
 
-import (
-	"bufio"
-	"log"
-	"log/slog"
-	"math"
-	"os"
+var Opts *Options
 
-	gf "github.com/jessevdk/go-flags"
-)
-
-var Opts Options
-
-var args []string
+var Args []string
 
 type ListingOpts struct {
 	Recurse   bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories. Directory traversal is done iteratively and breadth first."`
@@ -58,73 +48,4 @@ type Options struct {
 	FilterOpts  `group:"Filtering options - Applied while traversing, called on every entry found."`
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
 	Printing    `group:"Printing options - Determines how the results are printed."`
-}
-
-func main() {
-	Opts = Options{}
-	rest, err := gf.Parse(&Opts)
-	if err != nil {
-		if gf.WroteHelp(err) {
-			os.Exit(0)
-		}
-		log.Fatalln("Error parsing flags:", err)
-	}
-	args = rest
-
-	if Opts.ToDepth == 0 && Opts.Recurse {
-		Opts.ToDepth = math.MaxInt64
-	}
-
-	if Opts.Debug {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-	}
-
-	implicitSlice()
-	pipedValues := readPipe()
-	if len(pipedValues) != 0 {
-		args = append(args, pipedValues...)
-	}
-
-	if len(args) == 0 {
-		args = append(args, "./")
-	}
-
-	res := &result{[]*finfo{}}
-	filters := collectFilters()
-	processes := collectProcess()
-	wfn := buildWalkDirFn(filters, res)
-	Traverse(wfn)
-
-	ProcessList(res, processes)
-	printWithBuf(res.files)
-}
-
-func implicitSlice() {
-	if Opts.Select != "" {
-		slog.Debug("slice is already set. ignoring implicit slice.")
-		return
-	}
-
-	if len(args) == 0 {
-		slog.Debug("implicit slice found no args")
-		return
-	}
-
-	L := len(args) - 1
-
-	if _, _, ok := parseSlice(args[L]); ok {
-		Opts.Select = args[L]
-		args = args[:L]
-	}
-}
-
-func readPipe() (res []string) {
-	fileInfo, _ := os.Stdin.Stat()
-	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			res = append(res, scanner.Text())
-		}
-	}
-	return
 }

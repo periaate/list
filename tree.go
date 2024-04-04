@@ -1,4 +1,4 @@
-package main
+package list
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ func (t *TreeNode) PrintTree(prefix string) {
 	}
 }
 
-func AddFilesToTree(files []*finfo) *TreeNode {
+func AddFilesToTree(files []*Finfo) *TreeNode {
 	if len(files) == 0 {
 		return nil
 	}

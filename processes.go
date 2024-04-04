@@ -1,18 +1,19 @@
-package main
+package list
 
 import (
+	"list/cfg"
 	"sort"
 
 	"github.com/facette/natsort"
 )
 
-func ProcessList(res *result, fns []process) {
+func ProcessList(res *Result, fns []process) {
 	for _, fn := range fns {
-		res.files = fn(res.files)
+		res.Files = fn(res.Files)
 	}
 }
 
-func reverse(filenames []*finfo) []*finfo {
+func reverse(filenames []*Finfo) []*Finfo {
 	for i := 0; i < len(filenames)/2; i++ {
 		j := len(filenames) - i - 1
 		filenames[i], filenames[j] = filenames[j], filenames[i]
@@ -20,37 +21,37 @@ func reverse(filenames []*finfo) []*finfo {
 	return filenames
 }
 
-func collectProcess() []process {
+func CollectProcess() []process {
 	var fns []process
 
 	switch {
-	case len(Opts.Query) > 0:
-		fns = append(fns, queryProcess)
-		if Opts.Ascending {
+	case len(cfg.Opts.Query) > 0:
+		fns = append(fns, QueryProcess)
+		if cfg.Opts.Ascending {
 			fns = append(fns, reverse)
 		}
-	case Opts.Ascending || len(Opts.Sort) != 0:
-		sorting := strToSortBy(Opts.Sort)
+	case cfg.Opts.Ascending || len(cfg.Opts.Sort) != 0:
+		sorting := StrToSortBy(cfg.Opts.Sort)
 
 		if sorting == byNone {
 			break
 		}
 
 		order := toDesc
-		if Opts.Ascending {
+		if cfg.Opts.Ascending {
 			order = toAsc
 		}
-		fns = append(fns, sortProcess(sorting, order))
+		fns = append(fns, SortProcess(sorting, order))
 	}
 
-	if len(Opts.Select) >= len("[0]") {
-		fns = append(fns, sliceProcess(Opts.Select))
+	if len(cfg.Opts.Select) >= len("[0]") {
+		fns = append(fns, SliceProcess(cfg.Opts.Select))
 	}
 	return fns
 }
 
-func sortProcess(sorting sortBy, ordering orderTo) process {
-	return func(filenames []*finfo) []*finfo {
+func SortProcess(sorting sortBy, ordering orderTo) process {
+	return func(filenames []*Finfo) []*Finfo {
 		if sorting == byName {
 			sort.Slice(filenames, func(i, j int) bool {
 				return natsort.Compare(filenames[i].name, filenames[j].name)
@@ -74,8 +75,8 @@ func sortProcess(sorting sortBy, ordering orderTo) process {
 	}
 }
 
-func sliceProcess(pattern string) process {
-	return func(filenames []*finfo) []*finfo {
-		return sliceArray(pattern, filenames)
+func SliceProcess(pattern string) process {
+	return func(filenames []*Finfo) []*Finfo {
+		return SliceArray(pattern, filenames)
 	}
 }

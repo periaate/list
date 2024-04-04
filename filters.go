@@ -1,47 +1,39 @@
-package main
+package list
 
 import (
 	"io/fs"
+	"list/cfg"
 	"strings"
 )
 
-func collectFilters() []filter {
+func CollectFilters() []filter {
 	var fns []filter
 
 	switch {
-	case Opts.DirOnly:
-		fns = append(fns, func(_ *finfo, d fs.DirEntry) bool {
+	case cfg.Opts.DirOnly:
+		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
 			return d.IsDir()
 		})
-	case Opts.FileOnly:
-		fns = append(fns, func(_ *finfo, d fs.DirEntry) bool {
+	case cfg.Opts.FileOnly:
+		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
 			return !d.IsDir()
 		})
 	}
 
-	switch strToSortBy(Opts.Sort) {
+	switch StrToSortBy(cfg.Opts.Sort) {
 	case byMod:
 		fns = append(fns, addModT)
 	case bySize:
 		fns = append(fns, addSize)
 	}
 
-	if (len(Opts.Search) + len(Opts.Include) + len(Opts.Exclude) + len(Opts.Ignore)) > 0 {
-		var include []contentType
-		var exclude []contentType
-		for _, inc := range Opts.Include {
-			include = append(include, stringToContentType(inc))
-		}
-		for _, exc := range Opts.Exclude {
-			exclude = append(exclude, stringToContentType(exc))
-		}
-
-		fns = append(fns, filterList(include, exclude, Opts.Ignore, Opts.Search))
+	if (len(cfg.Opts.Search) + len(cfg.Opts.Include) + len(cfg.Opts.Exclude) + len(cfg.Opts.Ignore)) > 0 {
+		fns = append(fns, filterList(cfg.Opts.Include, cfg.Opts.Exclude, cfg.Opts.Ignore, cfg.Opts.Search))
 	}
 	return fns
 }
 
-func addModT(fi *finfo, d fs.DirEntry) bool {
+func addModT(fi *Finfo, d fs.DirEntry) bool {
 	fileinfo, err := d.Info()
 	if err != nil || fileinfo == nil {
 		return false
@@ -57,7 +49,7 @@ func addModT(fi *finfo, d fs.DirEntry) bool {
 	return true
 }
 
-func addSize(fi *finfo, d fs.DirEntry) bool {
+func addSize(fi *Finfo, d fs.DirEntry) bool {
 	fileinfo, err := d.Info()
 	if err != nil || fileinfo == nil {
 		return false
@@ -67,10 +59,10 @@ func addSize(fi *finfo, d fs.DirEntry) bool {
 	return true
 }
 
-func filterList(include []contentType, exclude []contentType, ignore []string, search []string) filter {
+func filterList(include []string, exclude []string, ignore []string, search []string) filter {
 	// to avoid checking flags for every element.
 	var searchFn func(string) bool
-	if Opts.SearchAnd {
+	if cfg.Opts.SearchAnd {
 		searchFn = func(str string) bool {
 			for _, sub := range search {
 				if !strings.Contains(str, sub) {
@@ -90,14 +82,16 @@ func filterList(include []contentType, exclude []contentType, ignore []string, s
 		}
 	}
 
-	return func(fi *finfo, _ fs.DirEntry) bool {
+	return func(fi *Finfo, _ fs.DirEntry) bool {
 		any := searchFn(fi.name)
 		if len(search) > 0 && !any {
 			return false
 		}
 
+		ext := GetContentTypes(fi.name)
+
 		for _, inc := range include {
-			if inc != getContentType(fi.name) {
+			if !ext.contains(inc) {
 				return false
 			}
 		}
@@ -109,7 +103,7 @@ func filterList(include []contentType, exclude []contentType, ignore []string, s
 		}
 
 		for _, exc := range exclude {
-			if exc == getContentType(fi.name) {
+			if ext.contains(exc) {
 				return false
 			}
 		}

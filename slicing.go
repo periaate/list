@@ -1,4 +1,4 @@
-package main
+package list
 
 import (
 	"log/slog"
@@ -18,13 +18,13 @@ func Clamp[T constraints.Ordered](val, lower, upper T) (res T) {
 	return val
 }
 
-// sliceArray takes a string pattern and a generic slice, then returns a slice according to the pattern.
-func sliceArray[T any](pattern string, input []T) []T {
+// SliceArray takes a string pattern and a generic slice, then returns a slice according to the pattern.
+func SliceArray[T any](pattern string, input []T) []T {
 	if len(input) == 0 {
 		return input
 	}
 	// // Default slice indices
-	iar, isSlice, ok := parseSlice(pattern)
+	iar, isSlice, ok := ParseSlice(pattern)
 	if !ok {
 		return input
 	}
@@ -51,7 +51,7 @@ func sliceArray[T any](pattern string, input []T) []T {
 	return input[start:end]
 }
 
-func parseSlice(inp string) (iar []int, isSlice bool, ok bool) {
+func ParseSlice(inp string) (iar []int, isSlice bool, ok bool) {
 	if len(inp) < 3 {
 		slog.Debug("last argument is not long enough to be a slice")
 		return

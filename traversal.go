@@ -1,8 +1,9 @@
-package main
+package list
 
 import (
 	"archive/zip"
 	"io/fs"
+	"list/cfg"
 	"log"
 	"log/slog"
 	"os"
@@ -12,10 +13,10 @@ import (
 
 // Traverse traverses directories non-recursively and breadth first.
 func Traverse(wfn fs.WalkDirFunc) {
-	dirs := args
+	dirs := cfg.Args
 	var depth int
 	for len(dirs) != 0 {
-		if depth > Opts.ToDepth {
+		if depth > cfg.Opts.ToDepth {
 			return
 		}
 		var nd []string
@@ -38,12 +39,12 @@ func Traverse(wfn fs.WalkDirFunc) {
 					nd = append(nd, path)
 				}
 
-				if Opts.Archive && filepath.Ext(path) == ".zip" {
+				if cfg.Opts.Archive && filepath.Ext(path) == ".zip" {
 					nd = append(nd, path)
 					continue
 				}
 
-				if depth < Opts.FromDepth {
+				if depth < cfg.Opts.FromDepth {
 					continue
 				}
 
@@ -70,14 +71,14 @@ func traverseZip(path string, depth int, wfn fs.WalkDirFunc) {
 		fn := filepath.ToSlash(f.Name)
 
 		fdepth := depth + strings.Count(fn, "/")
-		if fdepth < Opts.FromDepth || fdepth > Opts.ToDepth {
+		if fdepth < cfg.Opts.FromDepth || fdepth > cfg.Opts.ToDepth {
 			continue
 		}
 		fpath := filepath.Join(path, fn)
 
 		entry := ZipEntry{f}
 
-		if depth <= Opts.FromDepth {
+		if depth <= cfg.Opts.FromDepth {
 			continue
 		}
 
@@ -88,19 +89,19 @@ func traverseZip(path string, depth int, wfn fs.WalkDirFunc) {
 	}
 }
 
-func buildWalkDirFn(fns []filter, res *result) func(string, fs.DirEntry, error) error {
+func BuildWalkDirFn(fns []filter, res *Result) func(string, fs.DirEntry, error) error {
 	return func(path string, d fs.DirEntry, err error) error {
 		if d == nil || err != nil {
 			return nil
 		}
-		fi := &finfo{name: d.Name(), path: path}
+		fi := &Finfo{name: d.Name(), path: path}
 		for _, fn := range fns {
 			res := fn(fi, d)
 			if !res {
 				return nil
 			}
 		}
-		res.files = append(res.files, fi)
+		res.Files = append(res.Files, fi)
 		return nil
 	}
 }
