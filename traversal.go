@@ -3,20 +3,21 @@ package list
 import (
 	"archive/zip"
 	"io/fs"
-	"list/cfg"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/periaate/list/cfg"
 )
 
 // Traverse traverses directories non-recursively and breadth first.
-func Traverse(wfn fs.WalkDirFunc) {
+func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
 	dirs := cfg.Args
 	var depth int
 	for len(dirs) != 0 {
-		if depth > cfg.Opts.ToDepth {
+		if depth > opts.ToDepth {
 			return
 		}
 		var nd []string
@@ -24,7 +25,7 @@ func Traverse(wfn fs.WalkDirFunc) {
 			ext := filepath.Ext(d)
 
 			if ext == ".zip" || ext == ".cbz" {
-				traverseZip(d, depth, wfn)
+				traverseZip(d, depth, wfn, opts)
 				continue
 			}
 
@@ -39,12 +40,12 @@ func Traverse(wfn fs.WalkDirFunc) {
 					nd = append(nd, path)
 				}
 
-				if cfg.Opts.Archive && filepath.Ext(path) == ".zip" {
+				if opts.Archive && filepath.Ext(path) == ".zip" {
 					nd = append(nd, path)
 					continue
 				}
 
-				if depth < cfg.Opts.FromDepth {
+				if depth < opts.FromDepth {
 					continue
 				}
 
@@ -60,7 +61,7 @@ func Traverse(wfn fs.WalkDirFunc) {
 	}
 }
 
-func traverseZip(path string, depth int, wfn fs.WalkDirFunc) {
+func traverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		log.Fatalln(err)
@@ -71,14 +72,14 @@ func traverseZip(path string, depth int, wfn fs.WalkDirFunc) {
 		fn := filepath.ToSlash(f.Name)
 
 		fdepth := depth + strings.Count(fn, "/")
-		if fdepth < cfg.Opts.FromDepth || fdepth > cfg.Opts.ToDepth {
+		if fdepth < opts.FromDepth || fdepth > opts.ToDepth {
 			continue
 		}
 		fpath := filepath.Join(path, fn)
 
 		entry := ZipEntry{f}
 
-		if depth <= cfg.Opts.FromDepth {
+		if depth <= opts.FromDepth {
 			continue
 		}
 

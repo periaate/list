@@ -2,33 +2,34 @@ package list
 
 import (
 	"io/fs"
-	"list/cfg"
 	"strings"
+
+	"github.com/periaate/list/cfg"
 )
 
-func CollectFilters() []filter {
+func CollectFilters(opts *cfg.Options) []filter {
 	var fns []filter
 
 	switch {
-	case cfg.Opts.DirOnly:
+	case opts.DirOnly:
 		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
 			return d.IsDir()
 		})
-	case cfg.Opts.FileOnly:
+	case opts.FileOnly:
 		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
 			return !d.IsDir()
 		})
 	}
 
-	switch StrToSortBy(cfg.Opts.Sort) {
+	switch StrToSortBy(opts.Sort) {
 	case byMod:
 		fns = append(fns, addModT)
 	case bySize:
 		fns = append(fns, addSize)
 	}
 
-	if (len(cfg.Opts.Search) + len(cfg.Opts.Include) + len(cfg.Opts.Exclude) + len(cfg.Opts.Ignore)) > 0 {
-		fns = append(fns, filterList(cfg.Opts.Include, cfg.Opts.Exclude, cfg.Opts.Ignore, cfg.Opts.Search))
+	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
+		fns = append(fns, filterList(opts))
 	}
 	return fns
 }
@@ -59,12 +60,12 @@ func addSize(fi *Finfo, d fs.DirEntry) bool {
 	return true
 }
 
-func filterList(include []string, exclude []string, ignore []string, search []string) filter {
+func filterList(opts *cfg.Options) filter {
 	// to avoid checking flags for every element.
 	var searchFn func(string) bool
-	if cfg.Opts.SearchAnd {
+	if opts.SearchAnd {
 		searchFn = func(str string) bool {
-			for _, sub := range search {
+			for _, sub := range opts.Search {
 				if !strings.Contains(str, sub) {
 					return false
 				}
@@ -73,7 +74,7 @@ func filterList(include []string, exclude []string, ignore []string, search []st
 		}
 	} else {
 		searchFn = func(str string) bool {
-			for _, sub := range search {
+			for _, sub := range opts.Search {
 				if strings.Contains(str, sub) {
 					return true
 				}
@@ -84,25 +85,25 @@ func filterList(include []string, exclude []string, ignore []string, search []st
 
 	return func(fi *Finfo, _ fs.DirEntry) bool {
 		any := searchFn(fi.name)
-		if len(search) > 0 && !any {
+		if len(opts.Search) > 0 && !any {
 			return false
 		}
 
 		ext := GetContentTypes(fi.name)
 
-		for _, inc := range include {
+		for _, inc := range opts.Include {
 			if !ext.contains(inc) {
 				return false
 			}
 		}
 
-		for _, ign := range ignore {
+		for _, ign := range opts.Ignore {
 			if strings.Contains(fi.path, ign) {
 				return false
 			}
 		}
 
-		for _, exc := range exclude {
+		for _, exc := range opts.Exclude {
 			if ext.contains(exc) {
 				return false
 			}

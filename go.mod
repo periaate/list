@@ -1,4 +1,4 @@
-module list
+module github.com/periaate/list
 
 go 1.22
 

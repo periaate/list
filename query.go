@@ -1,9 +1,10 @@
 package list
 
 import (
-	"list/cfg"
 	"sort"
 	"strings"
+
+	"github.com/periaate/list/cfg"
 )
 
 const N = 3

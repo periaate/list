@@ -1,8 +1,9 @@
 package list
 
 import (
-	"list/cfg"
 	"sort"
+
+	"github.com/periaate/list/cfg"
 
 	"github.com/facette/natsort"
 )
@@ -21,31 +22,31 @@ func reverse(filenames []*Finfo) []*Finfo {
 	return filenames
 }
 
-func CollectProcess() []process {
+func CollectProcess(opts *cfg.Options) []process {
 	var fns []process
 
 	switch {
-	case len(cfg.Opts.Query) > 0:
+	case len(opts.Query) > 0:
 		fns = append(fns, QueryProcess)
-		if cfg.Opts.Ascending {
+		if opts.Ascending {
 			fns = append(fns, reverse)
 		}
-	case cfg.Opts.Ascending || len(cfg.Opts.Sort) != 0:
-		sorting := StrToSortBy(cfg.Opts.Sort)
+	case opts.Ascending || len(opts.Sort) != 0:
+		sorting := StrToSortBy(opts.Sort)
 
 		if sorting == byNone {
 			break
 		}
 
 		order := toDesc
-		if cfg.Opts.Ascending {
+		if opts.Ascending {
 			order = toAsc
 		}
 		fns = append(fns, SortProcess(sorting, order))
 	}
 
-	if len(cfg.Opts.Select) >= len("[0]") {
-		fns = append(fns, SliceProcess(cfg.Opts.Select))
+	if len(opts.Select) >= len("[0]") {
+		fns = append(fns, SliceProcess(opts.Select))
 	}
 	return fns
 }

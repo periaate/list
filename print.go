@@ -2,10 +2,11 @@ package list
 
 import (
 	"bufio"
-	"list/cfg"
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/periaate/list/cfg"
 
 	"github.com/atotto/clipboard"
 )

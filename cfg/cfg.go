@@ -1,5 +1,16 @@
 package cfg
 
+import (
+	"log"
+	"log/slog"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+
+	gf "github.com/jessevdk/go-flags"
+)
+
 var Opts *Options
 
 var Args []string
@@ -48,4 +59,111 @@ type Options struct {
 	FilterOpts  `group:"Filtering options - Applied while traversing, called on every entry found."`
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
 	Printing    `group:"Printing options - Determines how the results are printed."`
+
+	Args []string
+}
+
+func Parse(args []string) *Options {
+	Opts = &Options{}
+	Opts := Opts
+	rest, err := gf.ParseArgs(Opts, args)
+	if err != nil {
+		if gf.WroteHelp(err) {
+			os.Exit(0)
+		}
+		log.Fatalln("Error parsing flags:", err)
+	}
+
+	Opts.Args = rest
+
+	if Opts.ToDepth == 0 && Opts.Recurse {
+		Opts.ToDepth = math.MaxInt64
+	}
+
+	if Opts.Debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	implicitSlice()
+
+	if len(Opts.Args) == 0 {
+		Opts.Args = append(Opts.Args, "./")
+	}
+
+	return Opts
+}
+
+func implicitSlice() {
+	if Opts.Select != "" {
+		slog.Debug("slice is already set. ignoring implicit slice.")
+		return
+	}
+
+	if len(Args) == 0 {
+		slog.Debug("implicit slice found no Args")
+		return
+	}
+
+	L := len(Args) - 1
+
+	if _, _, ok := ParseSlice(Args[L]); ok {
+		Opts.Select = Args[L]
+		Args = Args[:L]
+	}
+}
+
+func ParseSlice(inp string) (iar []int, isSlice bool, ok bool) {
+	if len(inp) < 3 {
+		slog.Debug("last argument is not long enough to be a slice")
+		return
+	}
+	L := len(inp) - 1
+	if inp[0] != '[' || inp[L] != ']' {
+		slog.Debug("last argument does not match slice pattern, is not within brackets")
+		return
+	}
+
+	slice := strings.Split(inp[1:L], ":")
+
+	if len(slice) > 2 {
+		slog.Debug("last argument does not match slice pattern, split returned too many items")
+		return
+	}
+
+	for _, s := range slice {
+		if len(s) == 0 {
+			continue
+		}
+		if !isInt(s) {
+			slog.Debug("slice pattern included non integer values")
+			return
+		}
+	}
+
+	iar = make([]int, len(slice))
+	for i, s := range slice {
+		iar[i], _ = strconv.Atoi(s)
+	}
+
+	return iar, len(iar) > 1, true
+}
+
+func isInt(s string) bool {
+	rar := []rune(s)
+	if len(rar) == 0 {
+		return false
+	}
+	if a := rar[0]; a == '-' {
+		if len(rar) == 1 {
+			return false
+		}
+		rar = rar[1:]
+	}
+
+	for _, r := range rar {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
