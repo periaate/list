@@ -14,10 +14,10 @@ type scored[T any] struct {
 	score float32
 }
 
-type scoredFiles[T any] []scored[T]
+type ScoredFiles[T any] []scored[T]
 
 // Items returns all T with a score above 0.
-func (s scoredFiles[T]) Items() []T {
+func (s ScoredFiles[T]) Items() []T {
 	items := make([]T, 0, len(s))
 	for i, v := range s {
 		if v.score == 0 {
@@ -28,19 +28,21 @@ func (s scoredFiles[T]) Items() []T {
 	return items
 }
 
-func QueryProcess(filenames []*Finfo) []*Finfo {
-	scorer := getScoringFunction(cfg.Opts.Query)
-	scorable := scoredFiles[*Finfo](make([]scored[*Finfo], len(filenames)))
-	for i, file := range filenames {
-		score := scorer(file.name)
-		scorable[i] = scored[*Finfo]{file, score}
-	}
+func QueryProcess(opts *cfg.Options) Process {
+	return func(filenames []*Finfo) []*Finfo {
+		scorer := GetScoringFunction(opts.Query)
+		scorable := ScoredFiles[*Finfo](make([]scored[*Finfo], len(filenames)))
+		for i, file := range filenames {
+			score := scorer(file.name)
+			scorable[i] = scored[*Finfo]{file, score}
+		}
 
-	SortByScore(scorable)
-	return scorable.Items()
+		SortByScore(scorable)
+		return scorable.Items()
+	}
 }
 
-func getScoringFunction(queries []string) func(string) float32 {
+func GetScoringFunction(queries []string) func(string) float32 {
 	queryGrams, _ := GenNgrams(queries, N)
 	n := N
 	return func(str string) (score float32) {
@@ -80,7 +82,7 @@ func GenNgrams(sar []string, n int) (map[string]int, int) {
 	return ngrams, qlen
 }
 
-func SortByScore[T any](files scoredFiles[T]) {
+func SortByScore[T any](files ScoredFiles[T]) {
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].score > files[j].score
 	})

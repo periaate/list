@@ -10,18 +10,18 @@ import (
 )
 
 func main() {
-	Opts := cfg.Parse(os.Args[1:])
+	opts := cfg.Parse(os.Args[1:])
 
 	pipedValues := readPipe()
 	if len(pipedValues) != 0 {
-		cfg.Args = append(cfg.Args, pipedValues...)
+		opts.Args = append(opts.Args, pipedValues...)
 	}
-	if len(cfg.Args) == 0 {
-		cfg.Args = append(cfg.Args, "./")
+	if len(opts.Args) == 0 {
+		opts.Args = append(opts.Args, "./")
 	}
 
-	res := list.Run(Opts)
-	list.PrintWithBuf(res.Files)
+	res := list.Run(opts)
+	list.PrintWithBuf(res.Files, opts)
 }
 
 func readPipe() (res []string) {

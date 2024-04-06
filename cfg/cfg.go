@@ -11,10 +11,6 @@ import (
 	gf "github.com/jessevdk/go-flags"
 )
 
-var Opts *Options
-
-var Args []string
-
 type ListingOpts struct {
 	Recurse   bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories. Directory traversal is done iteratively and breadth first."`
 	Archive   bool `short:"z" description:"Treat zip archives as directories."`
@@ -64,9 +60,8 @@ type Options struct {
 }
 
 func Parse(args []string) *Options {
-	Opts = &Options{}
-	Opts := Opts
-	rest, err := gf.ParseArgs(Opts, args)
+	opts := &Options{}
+	rest, err := gf.ParseArgs(opts, args)
 	if err != nil {
 		if gf.WroteHelp(err) {
 			os.Exit(0)
@@ -74,41 +69,41 @@ func Parse(args []string) *Options {
 		log.Fatalln("Error parsing flags:", err)
 	}
 
-	Opts.Args = rest
+	opts.Args = rest
 
-	if Opts.ToDepth == 0 && Opts.Recurse {
-		Opts.ToDepth = math.MaxInt64
+	if opts.ToDepth == 0 && opts.Recurse {
+		opts.ToDepth = math.MaxInt64
 	}
 
-	if Opts.Debug {
+	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	implicitSlice()
+	implicitSlice(opts)
 
-	if len(Opts.Args) == 0 {
-		Opts.Args = append(Opts.Args, "./")
+	if len(opts.Args) == 0 {
+		opts.Args = append(opts.Args, "./")
 	}
 
-	return Opts
+	return opts
 }
 
-func implicitSlice() {
+func implicitSlice(Opts *Options) {
 	if Opts.Select != "" {
 		slog.Debug("slice is already set. ignoring implicit slice.")
 		return
 	}
 
-	if len(Args) == 0 {
+	if len(Opts.Args) == 0 {
 		slog.Debug("implicit slice found no Args")
 		return
 	}
 
-	L := len(Args) - 1
+	L := len(Opts.Args) - 1
 
-	if _, _, ok := ParseSlice(Args[L]); ok {
-		Opts.Select = Args[L]
-		Args = Args[:L]
+	if _, _, ok := ParseSlice(Opts.Args[L]); ok {
+		Opts.Select = Opts.Args[L]
+		Opts.Args = Opts.Args[:L]
 	}
 }
 

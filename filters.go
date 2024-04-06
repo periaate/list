@@ -7,8 +7,8 @@ import (
 	"github.com/periaate/list/cfg"
 )
 
-func CollectFilters(opts *cfg.Options) []filter {
-	var fns []filter
+func CollectFilters(opts *cfg.Options) []Filter {
+	var fns []Filter
 
 	switch {
 	case opts.DirOnly:
@@ -22,14 +22,14 @@ func CollectFilters(opts *cfg.Options) []filter {
 	}
 
 	switch StrToSortBy(opts.Sort) {
-	case byMod:
+	case ByMod:
 		fns = append(fns, addModT)
-	case bySize:
+	case BySize:
 		fns = append(fns, addSize)
 	}
 
 	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
-		fns = append(fns, filterList(opts))
+		fns = append(fns, FilterList(opts))
 	}
 	return fns
 }
@@ -60,7 +60,7 @@ func addSize(fi *Finfo, d fs.DirEntry) bool {
 	return true
 }
 
-func filterList(opts *cfg.Options) filter {
+func FilterList(opts *cfg.Options) Filter {
 	// to avoid checking flags for every element.
 	var searchFn func(string) bool
 	if opts.SearchAnd {
@@ -92,7 +92,7 @@ func filterList(opts *cfg.Options) filter {
 		ext := GetContentTypes(fi.name)
 
 		for _, inc := range opts.Include {
-			if !ext.contains(inc) {
+			if !ext.Contains(inc) {
 				return false
 			}
 		}
@@ -104,7 +104,7 @@ func filterList(opts *cfg.Options) filter {
 		}
 
 		for _, exc := range opts.Exclude {
-			if ext.contains(exc) {
+			if ext.Contains(exc) {
 				return false
 			}
 		}

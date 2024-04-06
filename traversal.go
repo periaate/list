@@ -14,7 +14,7 @@ import (
 
 // Traverse traverses directories non-recursively and breadth first.
 func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
-	dirs := cfg.Args
+	dirs := opts.Args
 	var depth int
 	for len(dirs) != 0 {
 		if depth > opts.ToDepth {
@@ -25,7 +25,7 @@ func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
 			ext := filepath.Ext(d)
 
 			if ext == ".zip" || ext == ".cbz" {
-				traverseZip(d, depth, wfn, opts)
+				TraverseZip(d, depth, wfn, opts)
 				continue
 			}
 
@@ -61,7 +61,7 @@ func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
 	}
 }
 
-func traverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) {
+func TraverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		log.Fatalln(err)
@@ -90,7 +90,7 @@ func traverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) 
 	}
 }
 
-func BuildWalkDirFn(fns []filter, res *Result) func(string, fs.DirEntry, error) error {
+func BuildWalkDirFn(fns []Filter, res *Result) func(string, fs.DirEntry, error) error {
 	return func(path string, d fs.DirEntry, err error) error {
 		if d == nil || err != nil {
 			return nil

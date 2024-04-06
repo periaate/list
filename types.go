@@ -7,43 +7,43 @@ import (
 	"path/filepath"
 )
 
-type filter func(*Finfo, fs.DirEntry) bool
-type process func(filenames []*Finfo) []*Finfo
+type Filter func(*Finfo, fs.DirEntry) bool
+type Process func(filenames []*Finfo) []*Finfo
 
-type sortBy uint8
-type orderTo uint8
+type SortBy uint8
+type OrderTo uint8
 
 const (
-	other   = "other"
-	image   = "image"
-	video   = "video"
-	audio   = "audio"
-	archive = "archive"
-	zipLike = "zip"
+	Other   = "other"
+	Image   = "image"
+	Video   = "video"
+	Audio   = "audio"
+	Archive = "archive"
+	ZipLike = "zip"
 
-	byNone sortBy = iota
-	byMod
-	bySize
-	byName
+	ByNone SortBy = iota
+	ByMod
+	BySize
+	ByName
 
-	toDesc orderTo = iota
-	toAsc
+	ToDesc OrderTo = iota
+	ToAsc
 )
 
-func StrToSortBy(s string) sortBy {
+func StrToSortBy(s string) SortBy {
 	switch s {
 	case "date":
-		return byMod
+		return ByMod
 	case "mod":
-		return byMod
+		return ByMod
 	case "size":
-		return bySize
+		return BySize
 	case "name":
-		return byName
+		return ByName
 	case "none":
 		fallthrough
 	default:
-		return byNone
+		return ByNone
 	}
 }
 
@@ -57,7 +57,7 @@ func (z ZipEntry) Type() fs.FileMode          { return z.File.FileInfo().Mode() 
 func (z ZipEntry) Info() (fs.FileInfo, error) { return z.File.FileInfo(), nil }
 
 // check that zipentry is os.DirEntry
-var Z os.DirEntry = ZipEntry{}
+var _ os.DirEntry = ZipEntry{}
 
 type Finfo struct {
 	name string
@@ -65,19 +65,19 @@ type Finfo struct {
 	vany int64  // any numeric value, used for sorting
 }
 
-func GetContentTypes(filename string) (res arrSet[string]) {
+func GetContentTypes(filename string) (res ArrSet[string]) {
 	ext := filepath.Ext(filename)
-	for k, v := range cntType {
-		if v.contains(ext) {
+	for k, v := range CntType {
+		if v.Contains(ext) {
 			res = append(res, k)
 		}
 	}
 	return
 }
 
-type arrSet[T comparable] []T
+type ArrSet[T comparable] []T
 
-func (a arrSet[T]) contains(ext T) bool {
+func (a ArrSet[T]) Contains(ext T) bool {
 	for _, v := range a {
 		if v == ext {
 			return true
@@ -86,10 +86,10 @@ func (a arrSet[T]) contains(ext T) bool {
 	return false
 }
 
-var cntType = map[string]arrSet[string]{
-	image:   {".jpg", ".jpeg", ".png", ".apng", ".gif", ".bmp", ".webp", ".avif", ".jxl", ".tiff"},
-	video:   {".mp4", ".m4v", ".webm", ".mkv", ".avi", ".mov", ".mpg", ".mpeg"},
-	audio:   {".m4a", ".opus", ".ogg", ".mp3", ".flac", ".wav", ".aac"},
-	archive: {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".lz4", ".zst", ".lzma", ".lzip", ".lz", ".cbz"},
-	zipLike: {".zip", ".cbz", ".cbr"},
+var CntType = map[string]ArrSet[string]{
+	Image:   {".jpg", ".jpeg", ".png", ".apng", ".gif", ".bmp", ".webp", ".avif", ".jxl", ".tiff"},
+	Video:   {".mp4", ".m4v", ".webm", ".mkv", ".avi", ".mov", ".mpg", ".mpeg"},
+	Audio:   {".m4a", ".opus", ".ogg", ".mp3", ".flac", ".wav", ".aac"},
+	Archive: {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".lz4", ".zst", ".lzma", ".lzip", ".lz", ".cbz"},
+	ZipLike: {".zip", ".cbz", ".cbr"},
 }

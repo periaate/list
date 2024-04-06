@@ -14,16 +14,16 @@ import (
 // the interval of flushing the buffer
 const bufLength = 500
 
-func PrintWithBuf(files []*Finfo) {
+func PrintWithBuf(files []*Finfo, opts *cfg.Options) {
 	if len(files) == 0 {
 		return
 	}
-	if cfg.Opts.Quiet {
+	if opts.Quiet {
 		slog.Debug("quiet flag is set, returning from print function")
 		return
 	}
 
-	if cfg.Opts.Tree {
+	if opts.Tree {
 		ftree := AddFilesToTree(files)
 		ftree.PrintTree("")
 		return
@@ -38,13 +38,13 @@ func PrintWithBuf(files []*Finfo) {
 
 	for i, file := range files {
 		fp := filepath.ToSlash(file.path)
-		if cfg.Opts.Absolute {
+		if opts.Absolute {
 			fp, _ = filepath.Abs(file.path)
 			fp = filepath.ToSlash(fp)
 		}
 		res := fp + "\n"
 
-		if cfg.Opts.Clipboard {
+		if opts.Clipboard {
 			str = append(str, res...)
 		}
 
@@ -56,7 +56,7 @@ func PrintWithBuf(files []*Finfo) {
 
 	w.Flush()
 
-	if cfg.Opts.Clipboard {
+	if opts.Clipboard {
 		if str[len(str)-1] == '\n' {
 			str = str[:len(str)-1]
 		}
