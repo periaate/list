@@ -71,22 +71,32 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 		pat = pat[:ind]
 	}
 
-	if len(pat) == 1 {
+	ind := strings.Index(pat, ":")
+
+	if len(pat) == 1 || (ind == -1 && pat[0] == '-') {
 		slog.Debug("slice pattern is only one character long")
 		if pat[0] == ':' {
 			return input, nil
 		}
 
-		from, err = strconv.Atoi(pat)
-		if err != nil {
-			slog.Debug(err.Error())
-			return
-		}
-		to = from + 1
-		to *= pageSize
-		from *= pageSize
-		if from < 0 {
-			from = len(input) - from
+		if pat[0] == '-' {
+			slog.Debug("negative single index")
+			from, err = parseMinus(pat, len(input), pageSize)
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+			to = len(input)
+		} else {
+			from, err = strconv.Atoi(pat)
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+
+			to = from + 1
+			to *= pageSize
+			from *= pageSize
 		}
 
 		slog.Debug("slice results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
@@ -97,27 +107,10 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 		return input[from:to], nil
 	}
 
-	ind := strings.Index(pat, ":")
 	if ind == -1 {
 		err = fmt.Errorf("slice pattern does not contain a colon")
 		slog.Debug(err.Error())
 		return
-	}
-
-	parseMinus := func(s string) (int, error) {
-		val, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, err
-		}
-		return len(input) + val*pageSize, nil
-	}
-
-	parsePlus := func(s string) (int, error) {
-		val, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, err
-		}
-		return from + val*pageSize, nil
 	}
 
 	fromTo := []string{pat[:ind], pat[ind+1:]}
@@ -126,7 +119,7 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 		from = 0
 	} else {
 		if fromTo[f][0] == '-' {
-			from, err = parseMinus(fromTo[f])
+			from, err = parseMinus(fromTo[f], len(input), pageSize)
 			if err != nil {
 				slog.Debug(err.Error())
 				return
@@ -146,13 +139,13 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 	} else {
 		switch fromTo[t][0] {
 		case '+':
-			to, err = parsePlus(fromTo[t])
+			to, err = parsePlus(fromTo[t], from, pageSize)
 			if err != nil {
 				slog.Debug(err.Error())
 				return
 			}
 		case '-':
-			to, err = parseMinus(fromTo[t])
+			to, err = parseMinus(fromTo[t], len(input), pageSize)
 			if err != nil {
 				slog.Debug(err.Error())
 				return
@@ -174,4 +167,20 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 	slog.Debug("clamped results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
 
 	return input[from:to], nil
+}
+
+func parseMinus(s string, l, size int) (int, error) {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return l + val*size, nil
+}
+
+func parsePlus(s string, l, size int) (int, error) {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return l + val*size, nil
 }

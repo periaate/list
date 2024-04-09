@@ -62,6 +62,13 @@ func TestSlice(t *testing.T) {
 		},
 		// Negative index
 		{
+			"[-1]",
+			baseInput,
+			[]string{"5"},
+			false,
+			"select last element",
+		},
+		{
 			"[-1:]",
 			baseInput,
 			[]string{"5"},
