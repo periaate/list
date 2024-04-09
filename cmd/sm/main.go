@@ -20,7 +20,7 @@ func main() {
 	}
 
 	for _, v := range pipedValues {
-		res := list.SliceArray(os.Args[1], []rune(v))
+		res, _ := list.Slice(os.Args[1], []rune(v))
 		fmt.Println(string(res))
 	}
 }

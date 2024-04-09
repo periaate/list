@@ -76,6 +76,10 @@ func SortProcess(sorting SortBy, ordering OrderTo) Process {
 
 func SliceProcess(pattern string) Process {
 	return func(filenames []*Finfo) []*Finfo {
-		return SliceArray(pattern, filenames)
+		res, err := Slice(pattern, filenames)
+		if err != nil {
+			return filenames
+		}
+		return res
 	}
 }

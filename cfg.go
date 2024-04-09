@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"strconv"
-	"strings"
 
 	gf "github.com/jessevdk/go-flags"
 )
@@ -79,7 +77,9 @@ func Parse(args []string) *Options {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
+	slog.Debug("args before slice", "len", len(opts.Args))
 	ImplicitSlice(opts)
+	slog.Debug("left after slice", "len", len(opts.Args))
 
 	if len(opts.Args) == 0 {
 		opts.Args = append(opts.Args, "./")
@@ -88,77 +88,26 @@ func Parse(args []string) *Options {
 	return opts
 }
 
-func ImplicitSlice(Opts *Options) {
-	if Opts.Select != "" {
+func ImplicitSlice(opts *Options) {
+	if opts.Select != "" {
 		slog.Debug("slice is already set. ignoring implicit slice.")
 		return
 	}
 
-	if len(Opts.Args) == 0 {
+	if len(opts.Args) == 0 {
 		slog.Debug("implicit slice found no Args")
 		return
 	}
 
-	L := len(Opts.Args) - 1
-
-	if _, _, ok := ParseSlice(Opts.Args[L]); ok {
-		Opts.Select = Opts.Args[L]
-		Opts.Args = Opts.Args[:L]
-	}
-}
-
-func ParseSlice(inp string) (iar []int, isSlice bool, ok bool) {
-	if len(inp) < 3 {
-		slog.Debug("last argument is not long enough to be a slice")
-		return
-	}
-	L := len(inp) - 1
-	if inp[0] != '[' || inp[L] != ']' {
-		slog.Debug("last argument does not match slice pattern, is not within brackets")
-		return
-	}
-
-	slice := strings.Split(inp[1:L], ":")
-
-	if len(slice) > 2 {
-		slog.Debug("last argument does not match slice pattern, split returned too many items")
-		return
-	}
-
-	for _, s := range slice {
-		if len(s) == 0 {
+	for i, arg := range opts.Args {
+		if len(arg) < 2 {
 			continue
 		}
-		if !isInt(s) {
-			slog.Debug("slice pattern included non integer values")
-			return
+		if arg[0] == '[' && arg[len(arg)-1] == ']' {
+			opts.Select = arg
+			opts.Args = append(opts.Args[:i], opts.Args[i+1:]...)
+			slog.Debug("implicit slice found", "slice", opts.Select, "Args left", len(opts.Args))
+			break
 		}
 	}
-
-	iar = make([]int, len(slice))
-	for i, s := range slice {
-		iar[i], _ = strconv.Atoi(s)
-	}
-
-	return iar, len(iar) > 1, true
-}
-
-func isInt(s string) bool {
-	rar := []rune(s)
-	if len(rar) == 0 {
-		return false
-	}
-	if a := rar[0]; a == '-' {
-		if len(rar) == 1 {
-			return false
-		}
-		rar = rar[1:]
-	}
-
-	for _, r := range rar {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
 }

@@ -1,6 +1,11 @@
 package list
 
 import (
+	"fmt"
+	"log/slog"
+	"strconv"
+	"strings"
+
 	"golang.org/x/exp/constraints"
 )
 
@@ -14,35 +19,159 @@ func Clamp[T constraints.Ordered](val, lower, upper T) (res T) {
 	return val
 }
 
-// SliceArray takes a string pattern and a generic slice, then returns a slice according to the pattern.
-func SliceArray[T any](pattern string, input []T) []T {
+const (
+	f = 0
+	t = 1
+
+	pageToken = '='
+)
+
+func Slice[T any](pat string, input []T) (_ []T, err error) {
+	var from, to int
+
 	if len(input) == 0 {
-		return input
-	}
-	// // Default slice indices
-	iar, isSlice, ok := ParseSlice(pattern)
-	if !ok {
-		return input
+		err = fmt.Errorf("input is empty")
+		slog.Debug(err.Error())
+		return
 	}
 
-	for i, v := range iar {
-		if v < 0 {
-			iar[i] = len(input) + v
+	if len(pat) < 3 {
+		err = fmt.Errorf("last argument is not long enough to be a slice")
+		slog.Debug(err.Error())
+		return
+	}
+
+	L := len(pat) - 1
+	if pat[0] != '[' || pat[L] != ']' {
+		err = fmt.Errorf("last argument does not match slice pattern, does not start and end with brackets")
+		slog.Debug(err.Error())
+		return
+	}
+	pat = pat[1:L]
+	slog.Debug("slice pattern", "pattern", pat)
+
+	for _, r := range pat {
+		if !(r == '-' || r == '+' || r == ':' || r == pageToken || r >= '0' || r <= '9') {
+			err = fmt.Errorf("slice pattern included non integer values")
+			slog.Debug(err.Error())
+			return
 		}
-		iar[i] = Clamp(iar[i], 0, len(input))
 	}
 
-	if !isSlice {
-		return []T{input[iar[0]]}
-	}
-	if iar[1] == 0 {
-		iar[1] = len(input) - 1
-	}
-	iar[1]++
+	pageSize := 1
 
-	start := Clamp(iar[0], iar[0], len(input))
-	end := Clamp(iar[1], iar[0], len(input))
-	start = Clamp(start, 0, end)
+	if ind := strings.Index(pat, string(pageToken)); ind != -1 {
+		vl := pat[ind+1:]
+		pageSize, err = strconv.Atoi(vl)
+		if err != nil {
+			slog.Debug(err.Error())
+			return
+		}
 
-	return input[start:end]
+		pat = pat[:ind]
+	}
+
+	if len(pat) == 1 {
+		slog.Debug("slice pattern is only one character long")
+		if pat[0] == ':' {
+			return input, nil
+		}
+
+		from, err = strconv.Atoi(pat)
+		if err != nil {
+			slog.Debug(err.Error())
+			return
+		}
+		to = from + 1
+		to *= pageSize
+		from *= pageSize
+		if from < 0 {
+			from = len(input) - from
+		}
+
+		slog.Debug("slice results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+		from = Clamp(from, 0, len(input))
+		to = Clamp(to, 0, len(input))
+		from = Clamp(from, 0, to)
+		slog.Debug("clamped results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+		return input[from:to], nil
+	}
+
+	ind := strings.Index(pat, ":")
+	if ind == -1 {
+		err = fmt.Errorf("slice pattern does not contain a colon")
+		slog.Debug(err.Error())
+		return
+	}
+
+	parseMinus := func(s string) (int, error) {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, err
+		}
+		return len(input) + val*pageSize, nil
+	}
+
+	parsePlus := func(s string) (int, error) {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, err
+		}
+		return from + val*pageSize, nil
+	}
+
+	fromTo := []string{pat[:ind], pat[ind+1:]}
+
+	if fromTo[f] == "" {
+		from = 0
+	} else {
+		if fromTo[f][0] == '-' {
+			from, err = parseMinus(fromTo[f])
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+		} else {
+			from, err = strconv.Atoi(fromTo[f])
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+			from *= pageSize
+		}
+	}
+
+	if fromTo[t] == "" {
+		to = len(input)
+	} else {
+		switch fromTo[t][0] {
+		case '+':
+			to, err = parsePlus(fromTo[t])
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+		case '-':
+			to, err = parseMinus(fromTo[t])
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+		default:
+			to, err = strconv.Atoi(fromTo[t])
+			if err != nil {
+				slog.Debug(err.Error())
+				return
+			}
+			to *= pageSize
+		}
+	}
+
+	slog.Debug("slice results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+	from = Clamp(from, 0, len(input))
+	to = Clamp(to, 0, len(input))
+	from = Clamp(from, 0, to)
+	slog.Debug("clamped results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+
+	return input[from:to], nil
 }
