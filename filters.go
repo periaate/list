@@ -3,11 +3,9 @@ package list
 import (
 	"io/fs"
 	"strings"
-
-	"github.com/periaate/list/cfg"
 )
 
-func CollectFilters(opts *cfg.Options) []Filter {
+func CollectFilters(opts *Options) []Filter {
 	var fns []Filter
 
 	switch {
@@ -26,6 +24,8 @@ func CollectFilters(opts *cfg.Options) []Filter {
 		fns = append(fns, addModT)
 	case BySize:
 		fns = append(fns, addSize)
+	case ByCreation:
+		fns = append(fns, addCreationT)
 	}
 
 	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
@@ -35,33 +35,31 @@ func CollectFilters(opts *cfg.Options) []Filter {
 }
 
 func addModT(fi *Finfo, d fs.DirEntry) bool {
-	fileinfo, err := d.Info()
-	if err != nil || fileinfo == nil {
+	info, err := d.Info()
+	if err != nil || info == nil {
 		return false
 	}
 
-	info, err := d.Info()
-	if err != nil {
-		return false
-	}
 	unixTime := info.ModTime().Unix()
 
-	fi.vany = unixTime
+	fi.Vany = unixTime
 	return true
 }
 
 func addSize(fi *Finfo, d fs.DirEntry) bool {
-	fileinfo, err := d.Info()
-	if err != nil || fileinfo == nil {
+	info, err := d.Info()
+	if err != nil || info == nil {
 		return false
 	}
 
-	fi.vany = fileinfo.Size()
+	fi.Vany = info.Size()
 	return true
 }
 
-func FilterList(opts *cfg.Options) Filter {
-	// to avoid checking flags for every element.
+func FilterList(opts *Options) Filter {
+	incMask := AsMask(opts.Include)
+	excMask := AsMask(opts.Exclude)
+
 	var searchFn func(string) bool
 	if opts.SearchAnd {
 		searchFn = func(str string) bool {
@@ -84,29 +82,23 @@ func FilterList(opts *cfg.Options) Filter {
 	}
 
 	return func(fi *Finfo, _ fs.DirEntry) bool {
-		any := searchFn(fi.name)
+		any := searchFn(fi.Name)
 		if len(opts.Search) > 0 && !any {
 			return false
 		}
 
-		ext := GetContentTypes(fi.name)
-
-		for _, inc := range opts.Include {
-			if !ext.Contains(inc) {
-				return false
-			}
+		if incMask > 0 && (incMask&fi.Mask) == 0 {
+			return false
 		}
 
 		for _, ign := range opts.Ignore {
-			if strings.Contains(fi.path, ign) {
+			if strings.Contains(fi.Path, ign) {
 				return false
 			}
 		}
 
-		for _, exc := range opts.Exclude {
-			if ext.Contains(exc) {
-				return false
-			}
+		if excMask > 0 && (excMask&fi.Mask) != 0 {
+			return false
 		}
 
 		return true

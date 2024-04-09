@@ -3,8 +3,6 @@ package list
 import (
 	"sort"
 
-	"github.com/periaate/list/cfg"
-
 	"github.com/facette/natsort"
 )
 
@@ -14,7 +12,7 @@ func ProcessList(res *Result, fns []Process) {
 	}
 }
 
-func Reverse(filenames []*Finfo) []*Finfo {
+func Reverse[T any](filenames []T) []T {
 	for i := 0; i < len(filenames)/2; i++ {
 		j := len(filenames) - i - 1
 		filenames[i], filenames[j] = filenames[j], filenames[i]
@@ -22,14 +20,14 @@ func Reverse(filenames []*Finfo) []*Finfo {
 	return filenames
 }
 
-func CollectProcess(opts *cfg.Options) []Process {
+func CollectProcess(opts *Options) []Process {
 	var fns []Process
 
 	switch {
 	case len(opts.Query) > 0:
 		fns = append(fns, QueryProcess(opts))
 		if opts.Ascending {
-			fns = append(fns, Reverse)
+			fns = append(fns, Reverse[*Finfo])
 		}
 	case opts.Ascending || len(opts.Sort) != 0:
 		sorting := StrToSortBy(opts.Sort)
@@ -55,7 +53,7 @@ func SortProcess(sorting SortBy, ordering OrderTo) Process {
 	return func(filenames []*Finfo) []*Finfo {
 		if sorting == ByName {
 			sort.Slice(filenames, func(i, j int) bool {
-				return natsort.Compare(filenames[i].name, filenames[j].name)
+				return natsort.Compare(filenames[i].Name, filenames[j].Name)
 				// return natural(filenames[j].name, filenames[i].name)
 			})
 			if ordering == ToAsc {
@@ -66,7 +64,7 @@ func SortProcess(sorting SortBy, ordering OrderTo) Process {
 		}
 
 		sort.Slice(filenames, func(i, j int) bool {
-			return filenames[j].vany < filenames[i].vany
+			return filenames[j].Vany < filenames[i].Vany
 		})
 		if ordering == ToAsc {
 			return Reverse(filenames)

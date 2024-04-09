@@ -3,8 +3,6 @@ package list
 import (
 	"sort"
 	"strings"
-
-	"github.com/periaate/list/cfg"
 )
 
 const N = 3
@@ -28,12 +26,12 @@ func (s ScoredFiles[T]) Items() []T {
 	return items
 }
 
-func QueryProcess(opts *cfg.Options) Process {
+func QueryProcess(opts *Options) Process {
 	return func(filenames []*Finfo) []*Finfo {
 		scorer := GetScoringFunction(opts.Query)
 		scorable := ScoredFiles[*Finfo](make([]scored[*Finfo], len(filenames)))
 		for i, file := range filenames {
-			score := scorer(file.name)
+			score := scorer(file.Name)
 			scorable[i] = scored[*Finfo]{file, score}
 		}
 

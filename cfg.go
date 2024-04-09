@@ -1,4 +1,4 @@
-package cfg
+package list
 
 import (
 	"log"
@@ -79,7 +79,7 @@ func Parse(args []string) *Options {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	implicitSlice(opts)
+	ImplicitSlice(opts)
 
 	if len(opts.Args) == 0 {
 		opts.Args = append(opts.Args, "./")
@@ -88,7 +88,7 @@ func Parse(args []string) *Options {
 	return opts
 }
 
-func implicitSlice(Opts *Options) {
+func ImplicitSlice(Opts *Options) {
 	if Opts.Select != "" {
 		slog.Debug("slice is already set. ignoring implicit slice.")
 		return

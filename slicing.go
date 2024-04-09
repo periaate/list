@@ -1,8 +1,6 @@
 package list
 
 import (
-	"github.com/periaate/list/cfg"
-
 	"golang.org/x/exp/constraints"
 )
 
@@ -22,7 +20,7 @@ func SliceArray[T any](pattern string, input []T) []T {
 		return input
 	}
 	// // Default slice indices
-	iar, isSlice, ok := cfg.ParseSlice(pattern)
+	iar, isSlice, ok := ParseSlice(pattern)
 	if !ok {
 		return input
 	}

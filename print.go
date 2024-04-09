@@ -6,15 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/periaate/list/cfg"
-
 	"github.com/atotto/clipboard"
 )
 
 // the interval of flushing the buffer
 const bufLength = 500
 
-func PrintWithBuf(files []*Finfo, opts *cfg.Options) {
+func PrintWithBuf(files []*Finfo, opts *Options) {
 	if len(files) == 0 {
 		return
 	}
@@ -37,9 +35,9 @@ func PrintWithBuf(files []*Finfo, opts *cfg.Options) {
 	w := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
 
 	for i, file := range files {
-		fp := filepath.ToSlash(file.path)
+		fp := filepath.ToSlash(file.Path)
 		if opts.Absolute {
-			fp, _ = filepath.Abs(file.path)
+			fp, _ = filepath.Abs(file.Path)
 			fp = filepath.ToSlash(fp)
 		}
 		res := fp + "\n"

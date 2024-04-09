@@ -2,18 +2,17 @@ package list
 
 import (
 	"archive/zip"
+	"fmt"
 	"io/fs"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/periaate/list/cfg"
 )
 
 // Traverse traverses directories non-recursively and breadth first.
-func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
+func Traverse(wfn fs.WalkDirFunc, opts *Options) {
 	dirs := opts.Args
 	var depth int
 	for len(dirs) != 0 {
@@ -23,8 +22,9 @@ func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
 		var nd []string
 		for _, d := range dirs {
 			ext := filepath.Ext(d)
+			slog.Debug("traversing", "dir", d, "depth", depth, "ext", ext, "isarchive", CntMap[ext]&MaskZipLike != 0)
 
-			if ext == ".zip" || ext == ".cbz" {
+			if opts.Archive && CntMap[ext]&MaskZipLike != 0 {
 				TraverseZip(d, depth, wfn, opts)
 				continue
 			}
@@ -61,7 +61,7 @@ func Traverse(wfn fs.WalkDirFunc, opts *cfg.Options) {
 	}
 }
 
-func TraverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) {
+func TraverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *Options) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		log.Fatalln(err)
@@ -83,7 +83,7 @@ func TraverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) 
 			continue
 		}
 
-		err := wfn(fpath, entry, nil)
+		err := wfn(fpath, entry, fmt.Errorf("zl"))
 		if err != nil {
 			continue
 		}
@@ -92,10 +92,36 @@ func TraverseZip(path string, depth int, wfn fs.WalkDirFunc, opts *cfg.Options) 
 
 func BuildWalkDirFn(fns []Filter, res *Result) func(string, fs.DirEntry, error) error {
 	return func(path string, d fs.DirEntry, err error) error {
+		var b bool
+		if err != nil {
+			r := err.Error()
+			if r == "zl" {
+				err = nil
+				b = true
+			}
+		}
+
 		if d == nil || err != nil {
 			return nil
 		}
-		fi := &Finfo{name: d.Name(), path: path}
+
+		fi := &Finfo{Name: d.Name(), Path: path, IsDir: d.IsDir()}
+
+		ext := filepath.Ext(path)
+		fi.Mask |= CntMap[ext]
+		if b {
+			fi.Mask |= MaskZipLike
+			fi.IsArchive = true
+		}
+
+		// fmt.Println(
+		// 	fi.Mask&MaskImage != 0,
+		// 	fi.Mask&MaskVideo != 0,
+		// 	fi.Mask&MaskAudio != 0,
+		// 	fi.Mask&MaskArchive != 0,
+		// 	fi.Mask&MaskZipLike != 0,
+		// )
+
 		for _, fn := range fns {
 			res := fn(fi, d)
 			if !res {

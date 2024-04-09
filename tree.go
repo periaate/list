@@ -53,11 +53,11 @@ func AddFilesToTree(files []*Finfo) *TreeNode {
 		return nil
 	}
 
-	commonRoot := strings.Split(filepath.ToSlash(files[0].path), "/")[0]
+	commonRoot := strings.Split(filepath.ToSlash(files[0].Path), "/")[0]
 	root := NewTreeNode(commonRoot)
 
 	for _, file := range files {
-		trimmedPath := strings.TrimPrefix(filepath.ToSlash(file.path), commonRoot+"/")
+		trimmedPath := strings.TrimPrefix(filepath.ToSlash(file.Path), commonRoot+"/")
 		root.AddPath(trimmedPath)
 	}
 
