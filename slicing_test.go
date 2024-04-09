@@ -69,6 +69,13 @@ func TestSlice(t *testing.T) {
 			"select last element",
 		},
 		{
+			"[-10]",
+			longInput,
+			[]string{"990"},
+			false,
+			"select last element, long input",
+		},
+		{
 			"[-1:]",
 			baseInput,
 			[]string{"5"},
