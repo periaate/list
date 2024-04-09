@@ -76,6 +76,13 @@ func TestSlice(t *testing.T) {
 			"select last element, long input",
 		},
 		{
+			fmt.Sprintf("[-1%s10]", string(pageToken)),
+			longInput,
+			longInput[longLen-1*10 : longLen],
+			false,
+			"select last 10, long input",
+		},
+		{
 			"[-1:]",
 			baseInput,
 			[]string{"5"},

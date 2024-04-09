@@ -86,7 +86,7 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 				slog.Debug(err.Error())
 				return
 			}
-			to = from + 1
+			to = from + 1*pageSize
 		} else {
 			from, err = strconv.Atoi(pat)
 			if err != nil {
