@@ -73,7 +73,6 @@ func SortProcess(sorting SortBy, ordering OrderTo) Process {
 		if sorting == ByName {
 			sort.Slice(filenames, func(i, j int) bool {
 				return natsort.Compare(filenames[i].Name, filenames[j].Name)
-				// return natural(filenames[j].name, filenames[i].name)
 			})
 			if ordering == ToAsc {
 				return Reverse(filenames)

@@ -76,6 +76,8 @@ func Parse(args []string) *Options {
 		opts.ToDepth = math.MaxInt64
 	}
 
+	opts.ToDepth = Clamp(opts.ToDepth, opts.FromDepth+1, math.MaxInt64)
+
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
