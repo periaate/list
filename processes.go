@@ -7,18 +7,39 @@ import (
 	"github.com/facette/natsort"
 )
 
+type Process func(filenames []*Finfo) []*Finfo
+
+const (
+	ByNone SortBy = iota
+	ByMod
+	BySize
+	ByCreation
+	ByName
+)
+
+type SortBy uint8
+
+func StrToSortBy(s string) SortBy {
+	switch s {
+	case "date", "mod", "time", "t":
+		return ByMod
+	case "creation", "c":
+		return ByCreation
+	case "size", "s":
+		return BySize
+	case "name", "n":
+		return ByName
+	case "none":
+		fallthrough
+	default:
+		return ByNone
+	}
+}
+
 func ProcessList(res *Result, fns []Process) {
 	for _, fn := range fns {
 		res.Files = fn(res.Files)
 	}
-}
-
-func Reverse[T any](filenames []T) []T {
-	for i := 0; i < len(filenames)/2; i++ {
-		j := len(filenames) - i - 1
-		filenames[i], filenames[j] = filenames[j], filenames[i]
-	}
-	return filenames
 }
 
 func CollectProcess(opts *Options) []Process {
@@ -27,9 +48,6 @@ func CollectProcess(opts *Options) []Process {
 	switch {
 	case len(opts.Query) > 0:
 		fns = append(fns, QueryProcess(opts))
-		if opts.Ascending {
-			fns = append(fns, Reverse[*Finfo])
-		}
 	case opts.Ascending || len(opts.Sort) != 0:
 		sorting := StrToSortBy(opts.Sort)
 
@@ -37,15 +55,7 @@ func CollectProcess(opts *Options) []Process {
 			break
 		}
 
-		order := ToDesc
-		if opts.Ascending {
-			order = ToAsc
-		}
-		fns = append(fns, SortProcess(sorting, order))
-	}
-
-	if len(opts.Select) >= len("[0]") {
-		fns = append(fns, SliceProcess(opts.Select))
+		fns = append(fns, SortProcess(sorting))
 	}
 
 	if opts.Shuffle {
@@ -55,7 +65,23 @@ func CollectProcess(opts *Options) []Process {
 		}
 		fns = append(fns, ShuffleProcess(source))
 	}
+
+	if opts.Ascending {
+		fns = append(fns, Reverse[*Finfo])
+	}
+
+	if len(opts.Select) >= len("[0]") {
+		fns = append(fns, SliceProcess(opts.Select))
+	}
 	return fns
+}
+
+func Reverse[T any](filenames []T) []T {
+	for i := 0; i < len(filenames)/2; i++ {
+		j := len(filenames) - i - 1
+		filenames[i], filenames[j] = filenames[j], filenames[i]
+	}
+	return filenames
 }
 
 func ShuffleProcess(src rand.Source) Process {
@@ -68,15 +94,12 @@ func ShuffleProcess(src rand.Source) Process {
 	}
 }
 
-func SortProcess(sorting SortBy, ordering OrderTo) Process {
+func SortProcess(sorting SortBy) Process {
 	return func(filenames []*Finfo) []*Finfo {
 		if sorting == ByName {
 			sort.Slice(filenames, func(i, j int) bool {
 				return natsort.Compare(filenames[i].Name, filenames[j].Name)
 			})
-			if ordering == ToAsc {
-				return Reverse(filenames)
-			}
 
 			return filenames
 		}
@@ -84,9 +107,6 @@ func SortProcess(sorting SortBy, ordering OrderTo) Process {
 		sort.Slice(filenames, func(i, j int) bool {
 			return filenames[j].Vany < filenames[i].Vany
 		})
-		if ordering == ToAsc {
-			return Reverse(filenames)
-		}
 
 		return filenames
 	}

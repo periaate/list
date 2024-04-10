@@ -147,6 +147,13 @@ func TestSlice(t *testing.T) {
 			false,
 			"last two pages of 10",
 		},
+		{
+			fmt.Sprintf("[%s10]", string(pageToken)),
+			longInput,
+			longInput[0*10 : 1*10],
+			false,
+			"implicit page 0 of size 10",
+		},
 		// Fail cases
 		{
 			"[0:a]",

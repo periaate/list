@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+type Filter func(*Finfo, fs.DirEntry) bool
+
 func CollectFilters(opts *Options) []Filter {
 	var fns []Filter
 

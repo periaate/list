@@ -69,6 +69,17 @@ func Slice[T any](pat string, input []T) (_ []T, err error) {
 		}
 
 		pat = pat[:ind]
+
+		if ind == 0 {
+			from = 0
+			to = pageSize
+			slog.Debug("page token only", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+			from = Clamp(from, 0, len(input))
+			to = Clamp(to, 0, len(input))
+			from = Clamp(from, 0, to)
+			slog.Debug("clamped results", "from", from, "to", to, "pagesize", pageSize, "input length", len(input))
+			return input[from:to], nil
+		}
 	}
 
 	ind := strings.Index(pat, ":")
