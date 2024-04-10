@@ -64,15 +64,13 @@ const (
 
 func StrToSortBy(s string) SortBy {
 	switch s {
-	case "date":
+	case "date", "mod", "time", "t":
 		return ByMod
-	case "mod":
-		return ByMod
-	case "creation":
+	case "creation", "c":
 		return ByCreation
-	case "size":
+	case "size", "s":
 		return BySize
-	case "name":
+	case "name", "n":
 		return ByName
 	case "none":
 		fallthrough

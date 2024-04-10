@@ -31,7 +31,7 @@ type ProcessOpts struct {
 	Query     []string `short:"q" long:"query" description:"Fuzzy search query. Results will be ordered by their score."`
 	Ascending bool     `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
 
-	Sort string `long:"sort" description:"Sort the result by word. Choices: [name|date|mod|size|none]. Date and mod are the same." default:"none"`
+	Sort string `short:"S" long:"sort" description:"Sort the result by word." default:"none" choice:"none" choice:"name" choice:"n" choice:"mod" choice:"time" choice:"t" choice:"size" choice:"s" choice:"creation" choice:"c"`
 
 	// Mod      bool `long:"mod" description:"Results will be ordered by their modified time."`
 	// Size     bool `long:"size" description:"Results will be ordered by their size time."`
