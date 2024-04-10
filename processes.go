@@ -1,6 +1,7 @@
 package list
 
 import (
+	"math/rand"
 	"sort"
 
 	"github.com/facette/natsort"
@@ -46,7 +47,25 @@ func CollectProcess(opts *Options) []Process {
 	if len(opts.Select) >= len("[0]") {
 		fns = append(fns, SliceProcess(opts.Select))
 	}
+
+	if opts.Shuffle {
+		source := rand.NewSource(rand.Int63())
+		if opts.Seed != -1 {
+			source = rand.New(rand.NewSource(opts.Seed))
+		}
+		fns = append(fns, ShuffleProcess(source))
+	}
 	return fns
+}
+
+func ShuffleProcess(src rand.Source) Process {
+	return func(filenames []*Finfo) []*Finfo {
+		for i := range filenames {
+			j := src.Int63() % int64(len(filenames))
+			filenames[i], filenames[j] = filenames[j], filenames[i]
+		}
+		return filenames
+	}
 }
 
 func SortProcess(sorting SortBy, ordering OrderTo) Process {

@@ -38,6 +38,9 @@ type ProcessOpts struct {
 	// None     bool `long:"none" description:"Results will be ordered by their modified time."`
 
 	Select string `long:"select" description:"Select a single element or a range of elements. Usage: [{index}] [{from}:{to}] Supports negative indexing. Can be used without a flag as the last argument."`
+
+	Shuffle bool  `long:"shuffle" description:"Randomly shuffle the result."`
+	Seed    int64 `long:"seed" description:"Seed for the random shuffle." default:"-1"`
 }
 
 type Printing struct {
