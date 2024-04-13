@@ -11,11 +11,11 @@ import (
 
 func Run(opts *Options) *Result {
 	res := &Result{Files: []*Finfo{}}
-	filters := CollectFilters(opts)
+	filters := InitFilters(CollectFilters(opts), res)
 	processes := CollectProcess(opts)
-	wfn := BuildWalkDirFn(filters, res)
+	traverser := GetTraverser(opts)
 
-	Traverse(wfn, opts)
+	traverser(opts, filters)
 	ProcessList(res, processes)
 	return res
 }
@@ -28,11 +28,17 @@ func Initialize(opts *Options) (*Result, []Filter, []Process) {
 	return res, filters, processes
 }
 
+type ModeOpts struct {
+	ArgMode  bool   `short:"l" long:"arg" description:"Skips listing, uses the input arguments as elements."`
+	FileMode string `long:"file" description:"Reads the files given as arguments and uses either words or lines as elements." choice:"words" choice:"w" choice:"lines" choice:"l"`
+}
+
 type ListingOpts struct {
-	Recurse   bool `short:"r" long:"recurse" description:"Recursively list files in subdirectories. Directory traversal is done iteratively and breadth first."`
-	Archive   bool `short:"z" description:"Treat zip archives as directories."`
-	ToDepth   int  `short:"T" long:"todepth" description:"List files to a certain depth." default:"0"`
-	FromDepth int  `short:"F" long:"fromdepth" description:"List files from a certain depth." default:"-1"`
+	Recurse   bool     `short:"r" long:"recurse" description:"Recursively list files in subdirectories. Directory traversal is done iteratively and breadth first."`
+	Archive   bool     `short:"z" description:"Treat zip archives as directories."`
+	ToDepth   int      `short:"T" long:"todepth" description:"List files to a certain depth." default:"0"`
+	FromDepth int      `short:"F" long:"fromdepth" description:"List files from a certain depth." default:"-1"`
+	DirSearch []string `short:"d" long:"dirsearch" description:"Only include directories which have search terms as substrings. Can be used multiple times. Multiple values are inclusive by default. (OR) Does not work within archives."`
 }
 
 type FilterOpts struct {
@@ -71,6 +77,7 @@ type Printing struct {
 }
 
 type Options struct {
+	ModeOpts    `group:"Mode options - Determines which mode list executes in, fs, string, file, etc."`
 	ListingOpts `group:"Traversal options - Determines how the traversal is done."`
 	FilterOpts  `group:"Filtering options - Applied while traversing, called on every entry found."`
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
@@ -105,10 +112,6 @@ func Parse(args []string) *Options {
 	ImplicitSlice(opts)
 	slog.Debug("left after slice", "len", len(opts.Args))
 
-	if len(opts.Args) == 0 {
-		opts.Args = append(opts.Args, "./")
-	}
-
 	return opts
 }
 
@@ -134,4 +137,9 @@ func ImplicitSlice(opts *Options) {
 			break
 		}
 	}
+}
+
+func Do(args ...string) *Result {
+	opts := Parse(args)
+	return Run(opts)
 }

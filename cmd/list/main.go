@@ -14,9 +14,6 @@ func main() {
 	if len(pipedValues) != 0 {
 		opts.Args = append(opts.Args, pipedValues...)
 	}
-	if len(opts.Args) == 0 {
-		opts.Args = append(opts.Args, "./")
-	}
 
 	res := list.Run(opts)
 	list.PrintWithBuf(res.Files, opts)

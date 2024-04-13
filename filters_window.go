@@ -8,14 +8,8 @@ import (
 	"syscall"
 )
 
-func addCreationT(fi *Finfo, d fs.DirEntry) bool {
-	fileinfo, err := d.Info()
-	if err != nil || fileinfo == nil {
-		return false
-	}
-	winFileInfo := fileinfo.Sys().(*syscall.Win32FileAttributeData)
+func addCreationT(fi *Finfo, info fs.FileInfo) {
+	winFileInfo := info.Sys().(*syscall.Win32FileAttributeData)
 
 	fi.Vany = winFileInfo.CreationTime.Nanoseconds()
-
-	return true
 }

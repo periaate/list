@@ -8,4 +8,4 @@ import (
 )
 
 // Implementation or stub of addCreationT for Unix
-func addCreationT(fi *Finfo, d fs.DirEntry) bool { return false }
+func addCreationT(_ *Finfo, _ fs.FileInfo) {}

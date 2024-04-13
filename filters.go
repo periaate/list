@@ -1,61 +1,89 @@
 package list
 
 import (
-	"io/fs"
 	"strings"
 )
 
-type Filter func(*Finfo, fs.DirEntry) bool
+type Filter func(*Finfo) bool
+
+const (
+	Other   = "other"
+	Image   = "image"
+	Video   = "video"
+	Audio   = "audio"
+	Archive = "archive"
+	ZipLike = "zip"
+
+	_ uint32 = 1 << iota
+	MaskImage
+	MaskVideo
+	MaskAudio
+	MaskArchive
+	MaskZipLike = 1<<iota + MaskArchive
+)
+
+var CntMasks = map[uint32][]string{
+	MaskImage:   {".jpg", ".jpeg", ".png", ".apng", ".gif", ".bmp", ".webp", ".avif", ".jxl", ".tiff"},
+	MaskVideo:   {".mp4", ".m4v", ".webm", ".mkv", ".avi", ".mov", ".mpg", ".mpeg"},
+	MaskAudio:   {".m4a", ".opus", ".ogg", ".mp3", ".flac", ".wav", ".aac"},
+	MaskArchive: {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".lz4", ".zst", ".lzma", ".lzip", ".lz", ".cbz"},
+	MaskZipLike: {".zip", ".cbz", ".cbr"},
+}
+var CntMap = map[string]uint32{}
+
+func AsMask(sar []string) uint32 {
+	var mask uint32
+	for _, v := range sar {
+		mask |= StrToMask(v)
+	}
+	return mask
+}
+
+func StrToMask(str string) uint32 {
+	switch str {
+	case Image:
+		return MaskImage
+	case Video:
+		return MaskVideo
+	case Audio:
+		return MaskAudio
+	case Archive:
+		return MaskArchive
+	case ZipLike:
+		return MaskZipLike
+	default:
+		return 0
+	}
+}
+func RegisterMasks(mask uint32, keys ...string) {
+	for _, k := range keys {
+		CntMap[k] |= mask
+	}
+}
+
+func init() {
+	for k, v := range CntMasks {
+		RegisterMasks(k, v...)
+	}
+}
 
 func CollectFilters(opts *Options) []Filter {
 	var fns []Filter
-
 	switch {
 	case opts.DirOnly:
-		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
-			return d.IsDir()
+		fns = append(fns, func(fi *Finfo) bool {
+			return fi.IsDir
 		})
 	case opts.FileOnly:
-		fns = append(fns, func(_ *Finfo, d fs.DirEntry) bool {
-			return !d.IsDir()
+		fns = append(fns, func(fi *Finfo) bool {
+			return !fi.IsDir
 		})
-	}
-
-	switch StrToSortBy(opts.Sort) {
-	case ByMod:
-		fns = append(fns, addModT)
-	case BySize:
-		fns = append(fns, addSize)
-	case ByCreation:
-		fns = append(fns, addCreationT)
 	}
 
 	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
 		fns = append(fns, FilterList(opts))
 	}
 	return fns
-}
-
-func addModT(fi *Finfo, d fs.DirEntry) bool {
-	info, err := d.Info()
-	if err != nil || info == nil {
-		return false
-	}
-
-	unixTime := info.ModTime().Unix()
-
-	fi.Vany = unixTime
-	return true
-}
-
-func addSize(fi *Finfo, d fs.DirEntry) bool {
-	info, err := d.Info()
-	if err != nil || info == nil {
-		return false
-	}
-
-	fi.Vany = info.Size()
-	return true
 }
 
 func FilterList(opts *Options) Filter {
@@ -83,7 +111,7 @@ func FilterList(opts *Options) Filter {
 		}
 	}
 
-	return func(fi *Finfo, _ fs.DirEntry) bool {
+	return func(fi *Finfo) bool {
 		any := searchFn(fi.Name)
 		if len(opts.Search) > 0 && !any {
 			return false
