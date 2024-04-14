@@ -45,8 +45,8 @@ type ListingOpts struct {
 type FilterOpts struct {
 	Search    []string `short:"s" long:"search" description:"Only include items which have search terms as substrings. Can be used multiple times. Multiple values are inclusive by default. (OR)"`
 	SearchAnd bool     `long:"AND" description:"Including this flag makes search with multiple values conjuctive, i.e., all search terms must be matched. (AND)"`
-	Include   []string `short:"i" long:"include" description:"File type inclusion: image, video, audio. Can be used multiple times."`
-	Exclude   []string `short:"e" long:"exclude" description:"File type exclusion: image, video, audio. Can be used multiple times."`
+	Include   []string `short:"i" long:"include" description:"File type inclusion. Can be used multiple times."`
+	Exclude   []string `short:"e" long:"exclude" description:"File type exclusion. Can be used multiple times."`
 	Ignore    []string `short:"I" long:"ignore" description:"Ignores all paths which include any given strings."`
 
 	DirOnly  bool `long:"dirs" description:"Only include directories in the result."`
@@ -110,13 +110,13 @@ func Parse(args []string) *Options {
 	}
 
 	slog.Debug("args before generic.Slice", "len", len(opts.Args))
-	ImplicitSlice(opts)
+	Implicit(opts)
 	slog.Debug("left after generic.Slice", "len", len(opts.Args))
 
 	return opts
 }
 
-func ImplicitSlice(opts *Options) {
+func Implicit(opts *Options) {
 	if len(opts.Args) == 0 {
 		slog.Debug("implicit slice found no Args")
 		return
@@ -124,16 +124,44 @@ func ImplicitSlice(opts *Options) {
 
 	newArgs := make([]string, 0, len(opts.Args))
 	for _, arg := range opts.Args {
-		if arg[0] == '[' && arg[len(arg)-1] == ']' {
+		switch {
+		case len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']':
 			opts.Select = append(opts.Select, arg)
 
 			slog.Debug("implicit generic.Slice found", "generic.Slice", opts.Select, "Args left", len(opts.Args))
-		} else {
+		case len(arg) > 1 && arg[0] == '?':
+			QuickCommand(arg[1:], opts)
+		default:
 			newArgs = append(newArgs, arg)
 		}
 	}
 
 	opts.Args = newArgs
+}
+
+func QuickCommand(arg string, opts *Options) {
+	for _, r := range arg {
+		switch r {
+		case 'm':
+			opts.Include = append(opts.Include, Audio, Video, Image)
+		case 'a':
+			opts.Include = append(opts.Include, Audio)
+		case 'v':
+			opts.Include = append(opts.Include, Video)
+		case 'i':
+			opts.Include = append(opts.Include, Image)
+		case 'n':
+			opts.Sort = "name"
+		case 'c':
+			opts.Sort = "creation"
+		case 't':
+			opts.Sort = "time"
+		case 'f':
+			opts.FileOnly = true
+		case 'd':
+			opts.DirOnly = true
+		}
+	}
 }
 
 func Do(args ...string) *Result {
