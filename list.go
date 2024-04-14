@@ -7,6 +7,7 @@ import (
 	"os"
 
 	gf "github.com/jessevdk/go-flags"
+	"github.com/periaate/slice"
 )
 
 func Run(opts *Options) *Result {
@@ -62,7 +63,7 @@ type ProcessOpts struct {
 	// Size     bool `long:"size" description:"Results will be ordered by their size time."`
 	// None     bool `long:"none" description:"Results will be ordered by their modified time."`
 
-	Select string `long:"select" description:"Select a single element or a range of elements. Usage: [{index}] [{from}:{to}] Supports negative indexing. Can be used without a flag as the last argument."`
+	Select []string `long:"select" description:"Select a single element or a range of elements. Usage: [{index}] [{from}:{to}] Supports negative indexing. Can be used without a flag as the last argument."`
 
 	Shuffle bool  `long:"shuffle" description:"Randomly shuffle the result."`
 	Seed    int64 `long:"seed" description:"Seed for the random shuffle." default:"-1"`
@@ -102,41 +103,37 @@ func Parse(args []string) *Options {
 		opts.ToDepth = math.MaxInt64
 	}
 
-	opts.ToDepth = Clamp(opts.ToDepth, opts.FromDepth+1, math.MaxInt64)
+	opts.ToDepth = slice.Clamp(opts.ToDepth, opts.FromDepth+1, math.MaxInt64)
 
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	slog.Debug("args before slice", "len", len(opts.Args))
+	slog.Debug("args before generic.Slice", "len", len(opts.Args))
 	ImplicitSlice(opts)
-	slog.Debug("left after slice", "len", len(opts.Args))
+	slog.Debug("left after generic.Slice", "len", len(opts.Args))
 
 	return opts
 }
 
 func ImplicitSlice(opts *Options) {
-	if opts.Select != "" {
-		slog.Debug("slice is already set. ignoring implicit slice.")
-		return
-	}
-
 	if len(opts.Args) == 0 {
 		slog.Debug("implicit slice found no Args")
 		return
 	}
 
-	for i, arg := range opts.Args {
-		if len(arg) < 2 {
-			continue
-		}
+	newArgs := make([]string, 0, len(opts.Args))
+	for _, arg := range opts.Args {
 		if arg[0] == '[' && arg[len(arg)-1] == ']' {
-			opts.Select = arg
-			opts.Args = append(opts.Args[:i], opts.Args[i+1:]...)
-			slog.Debug("implicit slice found", "slice", opts.Select, "Args left", len(opts.Args))
-			break
+			opts.Select = append(opts.Select, arg)
+
+			slog.Debug("implicit generic.Slice found", "generic.Slice", opts.Select, "Args left", len(opts.Args))
+		} else {
+			newArgs = append(newArgs, arg)
 		}
 	}
+
+	opts.Args = newArgs
 }
 
 func Do(args ...string) *Result {

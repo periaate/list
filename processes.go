@@ -1,10 +1,12 @@
 package list
 
 import (
+	"log/slog"
 	"math/rand"
 	"sort"
 
 	"github.com/facette/natsort"
+	"github.com/periaate/slice"
 )
 
 type Process func(filenames []*Finfo) []*Finfo
@@ -70,7 +72,7 @@ func CollectProcess(opts *Options) []Process {
 		fns = append(fns, Reverse[*Finfo])
 	}
 
-	if len(opts.Select) >= len("[0]") {
+	if len(opts.Select) > 0 {
 		fns = append(fns, SliceProcess(opts.Select))
 	}
 	return fns
@@ -112,11 +114,23 @@ func SortProcess(sorting SortBy) Process {
 	}
 }
 
-func SliceProcess(pattern string) Process {
-	return func(filenames []*Finfo) []*Finfo {
-		res, err := Slice(pattern, filenames)
-		if err != nil {
-			return filenames
+func SliceProcess(patterns []string) Process {
+	acts := make([]slice.Act[*Finfo], 0, len(patterns))
+	for _, pattern := range patterns {
+		act := slice.Parse[*Finfo](pattern)
+		if act != nil {
+			acts = append(acts, act)
+		}
+	}
+
+	return func(filenames []*Finfo) (res []*Finfo) {
+		for _, act := range acts {
+			r, err := act(filenames, filenames)
+			if err != nil {
+				slog.Error("error in generic.Slice", "error", err)
+				continue
+			}
+			res = append(res, r...)
 		}
 		return res
 	}

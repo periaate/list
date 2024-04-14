@@ -31,13 +31,13 @@ type Finfo struct {
 
 type ResultFilters func(*Finfo)
 
-type FinfoParser func(fs.FileInfo) *Finfo
+type FinfoParser func(string, fs.FileInfo) *Finfo
 
 func InitFileParser(opts *Options) FinfoParser {
-	return func(info fs.FileInfo) *Finfo {
+	return func(path string, info fs.FileInfo) *Finfo {
 		fi := &Finfo{
 			Name:  info.Name(),
-			Path:  info.Name(),
+			Path:  path,
 			IsDir: info.IsDir(),
 		}
 
@@ -170,7 +170,7 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 					continue
 				}
 
-				rfn(parser(info))
+				rfn(parser(path, info))
 			}
 		}
 
