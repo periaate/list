@@ -11,6 +11,7 @@ const (
 	Image    = "image"
 	Video    = "video"
 	Audio    = "audio"
+	Media    = "media"
 	Archive  = "archive"
 	ZipLike  = "zip"
 	Code     = "code"
@@ -64,12 +65,14 @@ func AsMask(sar []string) uint32 {
 
 func StrToMask(str string) uint32 {
 	switch str {
-	case Image:
+	case Image, "img", "i":
 		return MaskImage
-	case Video:
+	case Video, "vid", "v":
 		return MaskVideo
-	case Audio:
+	case Audio, "a":
 		return MaskAudio
+	case Media, "m":
+		return MaskImage | MaskVideo | MaskAudio
 	case Archive:
 		return MaskArchive
 	case ZipLike:

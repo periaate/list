@@ -179,4 +179,5 @@ var pairs = map[rune]func(*Options){
 	'r': func(opts *Options) { opts.Recurse = true },
 	'z': func(opts *Options) { opts.Archive = true },
 	'C': func(opts *Options) { opts.Count = true },
+	'R': func(opts *Options) { opts.Ascending = true },
 }
