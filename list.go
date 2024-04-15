@@ -7,6 +7,7 @@ import (
 	"os"
 
 	gf "github.com/jessevdk/go-flags"
+	"github.com/periaate/common"
 	"github.com/periaate/slice"
 )
 
@@ -84,11 +85,22 @@ type Options struct {
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
 	Printing    `group:"Printing options - Determines how the results are printed."`
 
-	Args []string
+	ExecArgs []string
+	Args     []string
 }
 
 func Parse(args []string) *Options {
-	opts := &Options{}
+	var execArgs []string
+
+	if i, ok := common.Any(args, func(f string) bool { return f == "::" }); ok {
+		// drop the "::", everything after goes to execargs
+		execArgs = args[i+1:]
+		args = args[:i]
+	}
+
+	opts := &Options{
+		ExecArgs: execArgs,
+	}
 	rest, err := gf.ParseArgs(opts, args)
 	if err != nil {
 		if gf.WroteHelp(err) {
@@ -143,22 +155,31 @@ func QuickCommand(arg string, opts *Options) {
 	for _, r := range arg {
 		switch r {
 		case 'm':
+			slog.Debug("quick command found", "key", "m", "command", "include media")
 			opts.Include = append(opts.Include, Audio, Video, Image)
 		case 'a':
+			slog.Debug("quick command found", "key", "a", "command", "include audio")
 			opts.Include = append(opts.Include, Audio)
 		case 'v':
+			slog.Debug("quick command found", "key", "v", "command", "include video")
 			opts.Include = append(opts.Include, Video)
 		case 'i':
+			slog.Debug("quick command found", "key", "i", "command", "include image")
 			opts.Include = append(opts.Include, Image)
 		case 'n':
+			slog.Debug("quick command found", "key", "n", "command", "sort by name")
 			opts.Sort = "name"
 		case 'c':
+			slog.Debug("quick command found", "key", "c", "command", "sort by creation")
 			opts.Sort = "creation"
 		case 't':
+			slog.Debug("quick command found", "key", "t", "command", "sort by time")
 			opts.Sort = "time"
 		case 'f':
+			slog.Debug("quick command found", "key", "f", "command", "files only")
 			opts.FileOnly = true
 		case 'd':
+			slog.Debug("quick command found", "key", "d", "command", "dirs only")
 			opts.DirOnly = true
 		}
 	}

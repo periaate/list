@@ -21,7 +21,7 @@ const (
 	MaskAudio
 	MaskArchive
 	MaskZipLike = 1<<iota + MaskArchive
-	MaskMedia   = MaskImage | MaskVideo | MaskAudio
+	// MaskMedia   = MaskImage | MaskVideo | MaskAudio
 )
 
 var CntMasks = map[uint32][]string{
@@ -53,8 +53,8 @@ func StrToMask(str string) uint32 {
 		return MaskArchive
 	case ZipLike:
 		return MaskZipLike
-	case Media:
-		return MaskMedia
+	// case Media:
+	// 	return MaskMedia
 	default:
 		return 0
 	}
@@ -70,11 +70,11 @@ func init() {
 		RegisterMasks(k, v...)
 	}
 
-	var med []string
-	med = append(med, CntMasks[MaskImage]...)
-	med = append(med, CntMasks[MaskVideo]...)
-	med = append(med, CntMasks[MaskAudio]...)
-	RegisterMasks(MaskMedia, med...)
+	// var med []string
+	// med = append(med, CntMasks[MaskImage]...)
+	// med = append(med, CntMasks[MaskVideo]...)
+	// med = append(med, CntMasks[MaskAudio]...)
+	// RegisterMasks(MaskMedia, med...)
 }
 
 func CollectFilters(opts *Options) []Filter {
