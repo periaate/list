@@ -136,6 +136,7 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 	if len(dirs) == 0 {
 		dirs = append(dirs, "./")
 	}
+
 	var depth int
 	for len(dirs) != 0 {
 		if depth > opts.ToDepth {
@@ -156,8 +157,15 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 			}
 
 			for _, info := range files {
-				path := filepath.Join(d, info.Name())
-				if info.IsDir() && searchFn(info.Name()) {
+				name := info.Name()
+				path := filepath.Join(d, name)
+				if !opts.NoHide {
+					if _, ok := Hide[name]; ok || name[0] == '.' {
+						continue
+					}
+				}
+
+				if info.IsDir() && searchFn(name) {
 					nd = append(nd, path)
 				}
 

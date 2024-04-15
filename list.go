@@ -41,6 +41,7 @@ type ListingOpts struct {
 	ToDepth   int      `short:"T" long:"todepth" description:"List files to a certain depth." default:"0"`
 	FromDepth int      `short:"F" long:"fromdepth" description:"List files from a certain depth." default:"-1"`
 	DirSearch []string `short:"d" long:"dirsearch" description:"Only include directories which have search terms as substrings. Can be used multiple times. Multiple values are inclusive by default. (OR) Does not work within archives."`
+	NoHide    bool     `short:"h" long:"hide" description:"Toggle of hiding of commonly unwanted files."`
 }
 
 type FilterOpts struct {
@@ -169,6 +170,7 @@ var pairs = map[rune]func(*Options){
 	'a': func(opts *Options) { opts.Include = append(opts.Include, Audio) },
 	'v': func(opts *Options) { opts.Include = append(opts.Include, Video) },
 	'i': func(opts *Options) { opts.Include = append(opts.Include, Image) },
+	'h': func(opts *Options) { opts.NoHide = true },
 	'n': func(opts *Options) { opts.Sort = "name" },
 	'c': func(opts *Options) { opts.Sort = "creation" },
 	't': func(opts *Options) { opts.Sort = "time" },
