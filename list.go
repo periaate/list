@@ -71,11 +71,11 @@ type ProcessOpts struct {
 }
 
 type Printing struct {
-	Absolute  bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
-	Debug     bool `short:"D" long:"debug" description:"Debug flag enables debug logging."`
-	Quiet     bool `short:"Q" long:"quiet" description:"Quiet flag disables printing results."`
-	Clipboard bool `short:"c" long:"clipboard" description:"Copy the result to the clipboard."`
-	Tree      bool `long:"tree" description:"Prints as tree."`
+	Absolute bool `short:"A" long:"absolute" description:"Format paths to be absolute. Relative by default."`
+	Debug    bool `short:"D" long:"debug" description:"Debug flag enables debug logging."`
+	Quiet    bool `short:"Q" long:"quiet" description:"Quiet flag disables printing results."`
+	Count    bool `short:"C" long:"count" description:"Print the number of results."`
+	Tree     bool `long:"tree" description:"Prints as tree."`
 }
 
 type Options struct {
@@ -153,34 +153,8 @@ func Implicit(opts *Options) {
 
 func QuickCommand(arg string, opts *Options) {
 	for _, r := range arg {
-		switch r {
-		case 'm':
-			slog.Debug("quick command found", "key", "m", "command", "include media")
-			opts.Include = append(opts.Include, Audio, Video, Image)
-		case 'a':
-			slog.Debug("quick command found", "key", "a", "command", "include audio")
-			opts.Include = append(opts.Include, Audio)
-		case 'v':
-			slog.Debug("quick command found", "key", "v", "command", "include video")
-			opts.Include = append(opts.Include, Video)
-		case 'i':
-			slog.Debug("quick command found", "key", "i", "command", "include image")
-			opts.Include = append(opts.Include, Image)
-		case 'n':
-			slog.Debug("quick command found", "key", "n", "command", "sort by name")
-			opts.Sort = "name"
-		case 'c':
-			slog.Debug("quick command found", "key", "c", "command", "sort by creation")
-			opts.Sort = "creation"
-		case 't':
-			slog.Debug("quick command found", "key", "t", "command", "sort by time")
-			opts.Sort = "time"
-		case 'f':
-			slog.Debug("quick command found", "key", "f", "command", "files only")
-			opts.FileOnly = true
-		case 'd':
-			slog.Debug("quick command found", "key", "d", "command", "dirs only")
-			opts.DirOnly = true
+		if fn, ok := pairs[r]; ok {
+			fn(opts)
 		}
 	}
 }
@@ -188,4 +162,19 @@ func QuickCommand(arg string, opts *Options) {
 func Do(args ...string) *Result {
 	opts := Parse(args)
 	return Run(opts)
+}
+
+var pairs = map[rune]func(*Options){
+	'm': func(opts *Options) { opts.Include = append(opts.Include, Audio, Video, Image) },
+	'a': func(opts *Options) { opts.Include = append(opts.Include, Audio) },
+	'v': func(opts *Options) { opts.Include = append(opts.Include, Video) },
+	'i': func(opts *Options) { opts.Include = append(opts.Include, Image) },
+	'n': func(opts *Options) { opts.Sort = "name" },
+	'c': func(opts *Options) { opts.Sort = "creation" },
+	't': func(opts *Options) { opts.Sort = "time" },
+	'f': func(opts *Options) { opts.FileOnly = true },
+	'd': func(opts *Options) { opts.DirOnly = true },
+	'r': func(opts *Options) { opts.Recurse = true },
+	'z': func(opts *Options) { opts.Archive = true },
+	'C': func(opts *Options) { opts.Count = true },
 }

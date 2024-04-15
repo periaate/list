@@ -8,15 +8,18 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/atotto/clipboard"
 )
 
 // the interval of flushing the buffer
 const bufLength = 500
 
-func PrintWithBuf(files []*Finfo, opts *Options) {
-	if len(files) == 0 {
+func PrintWithBuf(els []*Finfo, opts *Options) {
+	if opts.Count {
+		fmt.Println(len(els))
+		return
+	}
+
+	if len(els) == 0 {
 		return
 	}
 	if opts.Quiet {
@@ -25,7 +28,7 @@ func PrintWithBuf(files []*Finfo, opts *Options) {
 	}
 
 	if opts.Tree {
-		ftree := AddFilesToTree(files)
+		ftree := AddFilesToTree(els)
 		ftree.PrintTree("")
 		return
 	}
@@ -33,21 +36,16 @@ func PrintWithBuf(files []*Finfo, opts *Options) {
 	// I am unsure of how large this buffer should be. Testing or profiling might be necessary to
 	// find what is reasonable. The default buffer size was flushing automatically before being told to.
 	// This might be okay in itself, and we might not need to manually set a buffer ta all (or flush).
-	var str []byte
 
 	w := bufio.NewWriterSize(os.Stdout, 4096*bufLength)
 
-	for i, file := range files {
+	for i, file := range els {
 		fp := filepath.ToSlash(file.Path)
 		if opts.Absolute {
 			fp, _ = filepath.Abs(file.Path)
 			fp = filepath.ToSlash(fp)
 		}
 		res := fp + "\n"
-
-		if opts.Clipboard {
-			str = append(str, res...)
-		}
 
 		w.WriteString(res)
 		if i%bufLength == 0 {
@@ -56,13 +54,6 @@ func PrintWithBuf(files []*Finfo, opts *Options) {
 	}
 
 	w.Flush()
-
-	if opts.Clipboard {
-		if str[len(str)-1] == '\n' {
-			str = str[:len(str)-1]
-		}
-		clipboard.WriteAll(string(str))
-	}
 }
 
 // This file has largely been generated with GPT4.
