@@ -156,7 +156,10 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 				files = TraverseDir(d, depth, opts)
 			}
 
-			for _, info := range files {
+			for i, info := range files {
+				if i > opts.MaxLimit {
+					break
+				}
 				name := info.Name()
 				path := filepath.Join(d, name)
 				if !opts.NoHide {

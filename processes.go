@@ -115,23 +115,16 @@ func SortProcess(sorting SortBy) Process {
 }
 
 func SliceProcess(patterns []string) Process {
-	acts := make([]slice.Act[*Finfo], 0, len(patterns))
+	exp := slice.NewExpression[*Finfo]()
 	for _, pattern := range patterns {
-		act := slice.Parse[*Finfo](pattern)
-		if act != nil {
-			acts = append(acts, act)
-		}
+		exp.Parse(pattern)
 	}
 
 	return func(filenames []*Finfo) (res []*Finfo) {
-		for _, act := range acts {
-			r, err := act(filenames, filenames)
-			if err != nil {
-				slog.Error("error in generic.Slice", "error", err)
-				continue
-			}
-			res = append(res, r...)
+		res, err := exp.Eval(filenames)
+		if err != nil {
+			slog.Error("error in Slice", "error", err)
 		}
-		return res
+		return
 	}
 }

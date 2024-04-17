@@ -8,7 +8,6 @@ import (
 
 	gf "github.com/jessevdk/go-flags"
 	"github.com/periaate/common"
-	"github.com/periaate/slice"
 )
 
 func Run(opts *Options) *Result {
@@ -42,6 +41,7 @@ type ListingOpts struct {
 	FromDepth int      `short:"F" long:"fromdepth" description:"List files from a certain depth." default:"-1"`
 	DirSearch []string `short:"d" long:"dirsearch" description:"Only include directories which have search terms as substrings. Can be used multiple times. Multiple values are inclusive by default. (OR) Does not work within archives."`
 	NoHide    bool     `short:"h" long:"hide" description:"Toggle of hiding of commonly unwanted files."`
+	MaxLimit  int      `short:"m" long:"max" description:"Maximum number of elements traversed in a single directory. Unlimited by default."`
 }
 
 type FilterOpts struct {
@@ -90,6 +90,10 @@ type Options struct {
 	Args     []string
 }
 
+func Recurse(opts *Options) {
+	opts.ToDepth = math.MaxInt64
+}
+
 func Parse(args []string) *Options {
 	var execArgs []string
 
@@ -102,6 +106,7 @@ func Parse(args []string) *Options {
 	opts := &Options{
 		ExecArgs: execArgs,
 	}
+	opts.MaxLimit = math.MaxInt64
 	rest, err := gf.ParseArgs(opts, args)
 	if err != nil {
 		if gf.WroteHelp(err) {
@@ -113,18 +118,20 @@ func Parse(args []string) *Options {
 	opts.Args = rest
 
 	if opts.ToDepth == 0 && opts.Recurse {
-		opts.ToDepth = math.MaxInt64
+		Recurse(opts)
 	}
 
-	opts.ToDepth = slice.Clamp(opts.ToDepth, opts.FromDepth+1, math.MaxInt64)
+	opts.ToDepth = common.Clamp(opts.ToDepth, opts.FromDepth+1, math.MaxInt64)
 
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	slog.Debug("args before generic.Slice", "len", len(opts.Args))
+	bef := len(opts.Args)
 	Implicit(opts)
-	slog.Debug("left after generic.Slice", "len", len(opts.Args))
+	if bef != len(opts.Args) {
+		slog.Debug("Found implicit commands", "len", bef-len(opts.Args))
+	}
 
 	return opts
 }
@@ -140,10 +147,22 @@ func Implicit(opts *Options) {
 		switch {
 		case len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']':
 			opts.Select = append(opts.Select, arg)
-
-			slog.Debug("implicit generic.Slice found", "generic.Slice", opts.Select, "Args left", len(opts.Args))
-		case len(arg) > 1 && arg[0] == '?':
-			QuickCommand(arg[1:], opts)
+			slog.Debug("implicitly found cmd", "type", "Slice", "arg", arg)
+		case len(arg) > 1:
+			switch arg[0] {
+			case '?':
+				QuickCommand(arg[1:], opts)
+				slog.Debug("implicitly found cmd", "type", "QuickCommand", "arg", arg)
+			case '~':
+				opts.Query = append(opts.Query, arg[1:])
+				slog.Debug("implicitly found cmd", "type", "Query", "arg", arg)
+			case '=':
+				opts.Search = append(opts.Search, arg[1:])
+				slog.Debug("implicitly found cmd", "type", "Search", "arg", arg)
+			case '!':
+				opts.Ignore = append(opts.Ignore, arg[1:])
+				slog.Debug("implicitly found cmd", "type", "Ignore", "arg", arg)
+			}
 		default:
 			newArgs = append(newArgs, arg)
 		}
@@ -176,8 +195,9 @@ var pairs = map[rune]func(*Options){
 	't': func(opts *Options) { opts.Sort = "time" },
 	'f': func(opts *Options) { opts.FileOnly = true },
 	'd': func(opts *Options) { opts.DirOnly = true },
-	'r': func(opts *Options) { opts.Recurse = true },
+	'r': func(opts *Options) { Recurse(opts) },
 	'z': func(opts *Options) { opts.Archive = true },
 	'C': func(opts *Options) { opts.Count = true },
 	'R': func(opts *Options) { opts.Ascending = true },
+	'M': func(opts *Options) { opts.MaxLimit = 1000 },
 }
