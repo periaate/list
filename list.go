@@ -97,7 +97,7 @@ func Recurse(opts *Options) {
 func Parse(args []string) *Options {
 	var execArgs []string
 
-	if i, ok := common.Any(args, func(f string) bool { return f == "::" }); ok {
+	if _, i := common.First(args, func(f string) bool { return f == "::" }); i != -1 {
 		// drop the "::", everything after goes to execargs
 		execArgs = args[i+1:]
 		args = args[:i]
@@ -144,6 +144,7 @@ func Implicit(opts *Options) {
 
 	newArgs := make([]string, 0, len(opts.Args))
 	for _, arg := range opts.Args {
+
 		switch {
 		case len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']':
 			opts.Select = append(opts.Select, arg)
@@ -162,8 +163,12 @@ func Implicit(opts *Options) {
 			case '!':
 				opts.Ignore = append(opts.Ignore, arg[1:])
 				slog.Debug("implicitly found cmd", "type", "Ignore", "arg", arg)
+			default:
+				slog.Debug("implicit slice found no Args")
+				newArgs = append(newArgs, arg)
 			}
 		default:
+			slog.Debug("implicit slice found no Args")
 			newArgs = append(newArgs, arg)
 		}
 	}
