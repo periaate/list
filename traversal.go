@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type Result struct{ Files []*Finfo }
+type Result struct{ Files []*Element }
 
 func (r Result) Sar() []string {
 	res := make([]string, 0, len(r.Files))
@@ -20,22 +20,23 @@ func (r Result) Sar() []string {
 	return res
 }
 
-type Finfo struct {
+type Element struct {
 	Name      string
 	Path      string // includes name, relative path to cwd
 	Vany      int64  // any numeric value, used for sorting
+	Score     float32
 	Mask      uint32 // file kind, bitmask, see Mask* constants
 	IsDir     bool
 	IsArchive bool // is a readable archive; ziplike
 }
 
-type ResultFilters func(*Finfo)
+type ResultFilters func(*Element)
 
-type FinfoParser func(string, fs.FileInfo) *Finfo
+type FinfoParser func(string, fs.FileInfo) *Element
 
 func InitFileParser(opts *Options) FinfoParser {
-	return func(path string, info fs.FileInfo) *Finfo {
-		fi := &Finfo{
+	return func(path string, info fs.FileInfo) *Element {
+		fi := &Element{
 			Name:  info.Name(),
 			Path:  path,
 			IsDir: info.IsDir(),
@@ -59,8 +60,8 @@ func InitFileParser(opts *Options) FinfoParser {
 		return fi
 	}
 }
-func addModT(fi *Finfo, info fs.FileInfo) { fi.Vany = info.ModTime().Unix() }
-func addSize(fi *Finfo, info fs.FileInfo) { fi.Vany = info.Size() }
+func addModT(fi *Element, info fs.FileInfo) { fi.Vany = info.ModTime().Unix() }
+func addSize(fi *Element, info fs.FileInfo) { fi.Vany = info.Size() }
 
 type Traverser func(*Options, ResultFilters)
 
@@ -106,8 +107,8 @@ func TraverseArgs(opts *Options, rfn ResultFilters) {
 	}
 }
 
-func StringParser(s string) *Finfo {
-	return &Finfo{
+func StringParser(s string) *Element {
+	return &Element{
 		Name: s,
 		Path: s,
 		Mask: CntMap[filepath.Ext(s)], // attempt, not guaranteed to be filepath
@@ -116,18 +117,18 @@ func StringParser(s string) *Finfo {
 
 // TraverseFS traverses directories non-recursively and breadth first.
 func TraverseFS(opts *Options, rfn ResultFilters) {
-	var searchFn = func(string) bool { return true }
-	if len(opts.DirSearch) != 0 {
-		searchFn = func(str string) bool {
-			for _, k := range opts.DirSearch {
-				if strings.Contains(str, k) {
-					return true
-				}
-			}
-			return false
-		}
-	}
-	opts.DirSearch = append(opts.DirSearch, "./")
+	// var searchFn = func(string) bool { return true }
+	// if len(opts.DirSearch) != 0 {
+	// 	searchFn = func(str string) bool {
+	// 		for _, k := range opts.DirSearch {
+	// 			if strings.Contains(str, k) {
+	// 				return true
+	// 			}
+	// 		}
+	// 		return false
+	// 	}
+	// }
+	// opts.DirSearch = append(opts.DirSearch, "./")
 
 	parser := InitFileParser(opts)
 
@@ -135,6 +136,28 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 
 	if len(dirs) == 0 {
 		dirs = append(dirs, "./")
+	}
+
+	tf := func(s string) bool {
+		slog.Debug("default traversal filter", "dir", s)
+		return true
+	}
+	df := func(e *Element) bool {
+		return true
+	}
+	ff := func(e *Element) bool {
+		return true
+	}
+
+	if opts.traversalFpp != nil && opts.traversalFpp.Filter != nil {
+		tf = func(s string) bool { return opts.traversalFpp.Filter(&Element{Name: s}) }
+	}
+	if opts.dirsFpp != nil && opts.dirsFpp.Filter != nil {
+		df = func(e *Element) bool { return opts.dirsFpp.Filter(e) }
+	}
+
+	if opts.filesFpp != nil && opts.filesFpp.Filter != nil {
+		ff = func(e *Element) bool { return opts.filesFpp.Filter(e) }
 	}
 
 	var depth int
@@ -150,7 +173,7 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 			var files []fs.FileInfo
 
 			switch {
-			case opts.Archive && CntMap[ext]&MaskZipLike != 0 && searchFn(d):
+			case opts.Archive && CntMap[ext]&MaskZipLike != 0 && tf(d):
 				files = TraverseZip(d, depth, opts)
 			default:
 				files = TraverseDir(d, depth, opts)
@@ -168,11 +191,11 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 					}
 				}
 
-				if info.IsDir() && searchFn(name) {
+				if info.IsDir() && tf(path) {
 					nd = append(nd, path)
 				}
 
-				if opts.Archive && filepath.Ext(path) == ".zip" {
+				if opts.Archive && filepath.Ext(path) == ".zip" && tf(path) {
 					nd = append(nd, path)
 					continue
 				}
@@ -181,7 +204,13 @@ func TraverseFS(opts *Options, rfn ResultFilters) {
 					continue
 				}
 
-				rfn(parser(path, info))
+				p := parser(path, info)
+
+				if info.IsDir() && df(p) {
+					rfn(p)
+				} else if !info.IsDir() && ff(p) {
+					rfn(p)
+				}
 			}
 		}
 
@@ -240,7 +269,7 @@ func TraverseZip(path string, depth int, opts *Options) (files []fs.FileInfo) {
 }
 
 func InitFilters(fns []Filter, res *Result) ResultFilters {
-	return func(fi *Finfo) {
+	return func(fi *Element) {
 		for _, fn := range fns {
 			if !fn(fi) {
 				return

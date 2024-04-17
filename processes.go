@@ -9,7 +9,7 @@ import (
 	"github.com/periaate/slice"
 )
 
-type Process func(filenames []*Finfo) []*Finfo
+type Process func(filenames []*Element) []*Element
 
 const (
 	ByNone SortBy = iota
@@ -69,7 +69,7 @@ func CollectProcess(opts *Options) []Process {
 	}
 
 	if opts.Ascending {
-		fns = append(fns, Reverse[*Finfo])
+		fns = append(fns, Reverse[*Element])
 	}
 
 	if len(opts.Select) > 0 {
@@ -78,16 +78,16 @@ func CollectProcess(opts *Options) []Process {
 	return fns
 }
 
-func Reverse[T any](filenames []T) []T {
-	for i := 0; i < len(filenames)/2; i++ {
-		j := len(filenames) - i - 1
-		filenames[i], filenames[j] = filenames[j], filenames[i]
+func Reverse[T any](filenames []T) (res []T) {
+	res = make([]T, 0, len(filenames))
+	for i := len(filenames) - 1; i >= 0; i-- {
+		res = append(res, filenames[i])
 	}
-	return filenames
+	return
 }
 
 func ShuffleProcess(src rand.Source) Process {
-	return func(filenames []*Finfo) []*Finfo {
+	return func(filenames []*Element) []*Element {
 		for i := range filenames {
 			j := src.Int63() % int64(len(filenames))
 			filenames[i], filenames[j] = filenames[j], filenames[i]
@@ -97,7 +97,7 @@ func ShuffleProcess(src rand.Source) Process {
 }
 
 func SortProcess(sorting SortBy) Process {
-	return func(filenames []*Finfo) []*Finfo {
+	return func(filenames []*Element) []*Element {
 		if sorting == ByName {
 			sort.Slice(filenames, func(i, j int) bool {
 				return natsort.Compare(filenames[i].Name, filenames[j].Name)
@@ -115,12 +115,12 @@ func SortProcess(sorting SortBy) Process {
 }
 
 func SliceProcess(patterns []string) Process {
-	exp := slice.NewExpression[*Finfo]()
+	exp := slice.NewExpression[*Element]()
 	for _, pattern := range patterns {
 		exp.Parse(pattern)
 	}
 
-	return func(filenames []*Finfo) (res []*Finfo) {
+	return func(filenames []*Element) (res []*Element) {
 		res, err := exp.Eval(filenames)
 		if err != nil {
 			slog.Error("error in Slice", "error", err)

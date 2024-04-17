@@ -11,7 +11,7 @@ import (
 )
 
 func Run(opts *Options) *Result {
-	res := &Result{Files: []*Finfo{}}
+	res := &Result{Files: []*Element{}}
 	filters := InitFilters(CollectFilters(opts), res)
 	processes := CollectProcess(opts)
 	traverser := GetTraverser(opts)
@@ -22,7 +22,7 @@ func Run(opts *Options) *Result {
 }
 
 func Initialize(opts *Options) (*Result, []Filter, []Process) {
-	res := &Result{Files: []*Finfo{}}
+	res := &Result{Files: []*Element{}}
 	filters := CollectFilters(opts)
 	processes := CollectProcess(opts)
 
@@ -88,6 +88,10 @@ type Options struct {
 
 	ExecArgs []string
 	Args     []string
+
+	traversalFpp *FPPair
+	filesFpp     *FPPair
+	dirsFpp      *FPPair
 }
 
 func Recurse(opts *Options) {
@@ -144,30 +148,47 @@ func Implicit(opts *Options) {
 
 	newArgs := make([]string, 0, len(opts.Args))
 	for _, arg := range opts.Args {
+		fpp, ok := TargetedSearch(opts, arg)
 
-		switch {
-		case len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']':
+		if !ok {
+			goto Old
+		}
+
+		if fpp == nil {
+			continue
+		}
+		switch fpp.Tar {
+		case traversal:
+			if opts.traversalFpp != nil && opts.traversalFpp.Filter != nil {
+				slog.Debug("found traversal filter", "filter", fpp.Filter)
+				opts.traversalFpp.Filter = common.All(true, opts.traversalFpp.Filter, fpp.Filter)
+				continue
+			}
+			slog.Debug("didn't find traversal filter", "filter", fpp.Filter)
+			opts.traversalFpp = fpp
+			continue
+		case files:
+			if opts.filesFpp != nil && opts.filesFpp.Filter != nil && opts.filesFpp.Process != nil {
+				opts.filesFpp.Filter = common.All(true, opts.filesFpp.Filter, fpp.Filter)
+				opts.filesFpp.Process = common.Pipe(opts.filesFpp.Process, fpp.Process)
+				continue
+			}
+			opts.filesFpp = fpp
+			continue
+		case dirs:
+			if opts.dirsFpp != nil && opts.dirsFpp.Filter != nil && opts.dirsFpp.Process != nil {
+				opts.dirsFpp.Filter = common.All(true, opts.dirsFpp.Filter, fpp.Filter)
+				opts.dirsFpp.Process = common.Pipe(opts.dirsFpp.Process, fpp.Process)
+				continue
+			}
+			opts.dirsFpp = fpp
+			continue
+		}
+	Old:
+		if len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']' {
 			opts.Select = append(opts.Select, arg)
 			slog.Debug("implicitly found cmd", "type", "Slice", "arg", arg)
-		case len(arg) > 1:
-			switch arg[0] {
-			case '?':
-				QuickCommand(arg[1:], opts)
-				slog.Debug("implicitly found cmd", "type", "QuickCommand", "arg", arg)
-			case '~':
-				opts.Query = append(opts.Query, arg[1:])
-				slog.Debug("implicitly found cmd", "type", "Query", "arg", arg)
-			case '=':
-				opts.Search = append(opts.Search, arg[1:])
-				slog.Debug("implicitly found cmd", "type", "Search", "arg", arg)
-			case '!':
-				opts.Ignore = append(opts.Ignore, arg[1:])
-				slog.Debug("implicitly found cmd", "type", "Ignore", "arg", arg)
-			default:
-				slog.Debug("implicit slice found no Args")
-				newArgs = append(newArgs, arg)
-			}
-		default:
+		} else {
 			slog.Debug("implicit slice found no Args")
 			newArgs = append(newArgs, arg)
 		}

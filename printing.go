@@ -13,7 +13,7 @@ import (
 // the interval of flushing the buffer
 const bufLength = 500
 
-func PrintWithBuf(els []*Finfo, opts *Options) {
+func PrintWithBuf(els []*Element, opts *Options) {
 	if opts.Count {
 		fmt.Println(len(els))
 		return
@@ -97,7 +97,7 @@ func (t *TreeNode) PrintTree(prefix string) {
 	}
 }
 
-func AddFilesToTree(files []*Finfo) *TreeNode {
+func AddFilesToTree(files []*Element) *TreeNode {
 	if len(files) == 0 {
 		return nil
 	}

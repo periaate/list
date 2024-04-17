@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-type Filter func(*Finfo) bool
+type Filter func(*Element) bool
 
 const (
 	Other    = "other"
@@ -105,11 +105,11 @@ func CollectFilters(opts *Options) []Filter {
 	var fns []Filter
 	switch {
 	case opts.DirOnly:
-		fns = append(fns, func(fi *Finfo) bool {
+		fns = append(fns, func(fi *Element) bool {
 			return fi.IsDir
 		})
 	case opts.FileOnly:
-		fns = append(fns, func(fi *Finfo) bool {
+		fns = append(fns, func(fi *Element) bool {
 			return !fi.IsDir
 		})
 	}
@@ -145,7 +145,7 @@ func FilterList(opts *Options) Filter {
 		}
 	}
 
-	return func(fi *Finfo) bool {
+	return func(fi *Element) bool {
 		any := searchFn(fi.Name)
 		if len(opts.Search) > 0 && !any {
 			return false

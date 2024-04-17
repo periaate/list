@@ -1,6 +1,7 @@
 package list
 
 import (
+	"log/slog"
 	"sort"
 	"strings"
 )
@@ -27,12 +28,12 @@ func (s ScoredFiles[T]) Items() []T {
 }
 
 func QueryProcess(opts *Options) Process {
-	return func(filenames []*Finfo) []*Finfo {
+	return func(filenames []*Element) []*Element {
 		scorer := GetScoringFunction(opts.Query)
-		scorable := ScoredFiles[*Finfo](make([]scored[*Finfo], len(filenames)))
+		scorable := ScoredFiles[*Element](make([]scored[*Element], len(filenames)))
 		for i, file := range filenames {
 			score := scorer(file.Name)
-			scorable[i] = scored[*Finfo]{file, score}
+			scorable[i] = scored[*Element]{file, score}
 		}
 
 		SortByScore(scorable)
@@ -84,4 +85,13 @@ func SortByScore[T any](files ScoredFiles[T]) {
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].score > files[j].score
 	})
+}
+
+func QueryAsFilter(qr string) Filter {
+	scorer := GetScoringFunction([]string{qr})
+	return func(e *Element) bool {
+		score := scorer(e.Name)
+		slog.Debug("query filter", "name", e.Name, "score", score)
+		return score != 0
+	}
 }

@@ -8,4 +8,4 @@ import (
 )
 
 // Implementation or stub of addCreationT for Unix
-func addCreationT(_ *Finfo, _ fs.FileInfo) {}
+func addCreationT(_ *Element, _ fs.FileInfo) {}
