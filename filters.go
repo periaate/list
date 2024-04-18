@@ -160,7 +160,11 @@ func ParseKind(args []string, inc bool) Filter {
 		Include: inc,
 	}
 	for _, arg := range args {
-		q.Mask |= CntMap[filepath.Ext(arg)]
+		q.Mask |= StrToMask(arg)
+	}
+	if q.Mask == 0 {
+		slog.Debug("no mask found", "args", args)
+		return NoneFilter
 	}
 	return q.GetFilter()
 }
@@ -187,6 +191,8 @@ func (q Query) GetFilter() (f Filter) {
 		f = QueryAsFilter(q.Value)
 	case Exact:
 		f = ExactFilter(q.Value)
+	case MaskK:
+		f = MaskFilter(q.Mask)
 	case Substring:
 		fallthrough
 	default:
@@ -197,6 +203,12 @@ func (q Query) GetFilter() (f Filter) {
 		f = common.Negate(f)
 	}
 	return f
+}
+
+func MaskFilter(mask uint32) Filter {
+	return func(e *Element) bool {
+		return CntMap[filepath.Ext(e.Name)]&mask != 0
+	}
 }
 
 func ExactFilter(search string) Filter {
