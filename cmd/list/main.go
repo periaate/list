@@ -22,5 +22,5 @@ func main() {
 		return
 	}
 
-	list.PrintWithBuf(res.Files, opts)
+	list.PrintWithBuf(res, opts)
 }

@@ -2,14 +2,14 @@ package list
 
 import (
 	"log/slog"
-	"math/rand"
 	"sort"
 
 	"github.com/facette/natsort"
+	"github.com/periaate/common"
 	"github.com/periaate/slice"
 )
 
-type Process func(filenames []*Element) []*Element
+type Process func(els []*Element) []*Element
 
 const (
 	ByNone SortBy = iota
@@ -38,18 +38,8 @@ func StrToSortBy(s string) SortBy {
 	}
 }
 
-func ProcessList(res *Result, fns []Process) {
-	for _, fn := range fns {
-		res.Files = fn(res.Files)
-	}
-}
-
-func CollectProcess(opts *Options) []Process {
-	var fns []Process
-
+func CollectProcess(opts *Options) Process {
 	switch {
-	// case len(opts.Query) > 0:
-	// 	fns = append(fns, QueryProcess(opts))
 	case opts.Ascending || len(opts.Sort) != 0:
 		sorting := StrToSortBy(opts.Sort)
 
@@ -57,25 +47,17 @@ func CollectProcess(opts *Options) []Process {
 			break
 		}
 
-		fns = append(fns, SortProcess(sorting))
-	}
-
-	if opts.Shuffle {
-		source := rand.NewSource(rand.Int63())
-		if opts.Seed != -1 {
-			source = rand.New(rand.NewSource(opts.Seed))
-		}
-		fns = append(fns, ShuffleProcess(source))
+		opts.Processes = append(opts.Processes, SortProcess(sorting))
 	}
 
 	if opts.Ascending {
-		fns = append(fns, Reverse[*Element])
+		opts.Processes = append(opts.Processes, Reverse[*Element])
 	}
 
 	if len(opts.Select) > 0 {
-		fns = append(fns, SliceProcess(opts.Select))
+		opts.Processes = append(opts.Processes, SliceProcess(opts.Select))
 	}
-	return fns
+	return common.Pipe(opts.Processes...)
 }
 
 func Reverse[T any](filenames []T) (res []T) {
@@ -84,16 +66,6 @@ func Reverse[T any](filenames []T) (res []T) {
 		res = append(res, filenames[i])
 	}
 	return
-}
-
-func ShuffleProcess(src rand.Source) Process {
-	return func(filenames []*Element) []*Element {
-		for i := range filenames {
-			j := src.Int63() % int64(len(filenames))
-			filenames[i], filenames[j] = filenames[j], filenames[i]
-		}
-		return filenames
-	}
 }
 
 func SortProcess(sorting SortBy) Process {
@@ -125,14 +97,6 @@ func SliceProcess(patterns []string) Process {
 		if err != nil {
 			slog.Error("error in Slice", "error", err)
 		}
-		return
-	}
-}
-
-func LookBehind() Process {
-	return func(els []*Element) (res []*Element) {
-		res = make([]*Element, 0, len(els))
-
 		return
 	}
 }

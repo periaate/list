@@ -1,7 +1,11 @@
 package list
 
 import (
+	"log/slog"
+	"path/filepath"
 	"strings"
+
+	"github.com/periaate/common"
 )
 
 type Filter func(*Element) bool
@@ -101,73 +105,107 @@ func init() {
 	}
 }
 
-func CollectFilters(opts *Options) []Filter {
-	var fns []Filter
+func CollectFilters(opts *Options) Filter {
 	switch {
 	case opts.DirOnly:
-		fns = append(fns, func(fi *Element) bool {
+		opts.Filters = append(opts.Filters, func(fi *Element) bool {
 			return fi.IsDir
 		})
 	case opts.FileOnly:
-		fns = append(fns, func(fi *Element) bool {
+		opts.Filters = append(opts.Filters, func(fi *Element) bool {
 			return !fi.IsDir
 		})
 	}
 
-	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
-		fns = append(fns, FilterList(opts))
+	if (len(opts.Search)) > 0 {
+		opts.Filters = append(opts.Filters, ParseSearch(opts.Search))
 	}
-	if len(opts.Query) > 0 {
-		fns = append(fns, QueryAsFilter(opts.Query))
-	}
-	return fns
+
+	return common.All(true, opts.Filters...)
 }
 
-func FilterList(opts *Options) Filter {
-	incMask := AsMask(opts.Include)
-	excMask := AsMask(opts.Exclude)
+func ParseSearch(args []string) Filter {
+	slog.Debug("search args", "args", args)
+	filters := []func(*Element) bool{}
 
-	var searchFn func(string) bool
-	if opts.SearchAnd {
-		searchFn = func(str string) bool {
-			for _, sub := range opts.Search {
-				if !strings.Contains(str, sub) {
-					return false
-				}
-			}
-			return true
+	for _, arg := range args {
+		q := Query{Include: true}
+		switch {
+		case len(arg) < 2:
+			continue
+		case arg[:2] == "-=":
+			arg = arg[1:]
+			q.Include = false
+			fallthrough
+		case arg[0] == '=':
+			q.Value = arg
+			q.Kind = Exact
+		case arg[0] == '-':
+			arg = arg[1:]
+			q.Include = false
+			fallthrough
+		default:
+			q.Kind = Substring
+			q.Value = arg
 		}
-	} else {
-		searchFn = func(str string) bool {
-			for _, sub := range opts.Search {
-				if strings.Contains(str, sub) {
-					return true
-				}
-			}
-			return false
-		}
+		filters = append(filters, q.GetFilter())
 	}
 
-	return func(fi *Element) bool {
-		any := searchFn(fi.Name)
-		if len(opts.Search) > 0 && !any {
-			return false
-		}
+	return common.All(true, filters...)
+}
 
-		if incMask > 0 && (incMask&fi.Mask) == 0 {
-			return false
-		}
+func ParseKind(args []string, inc bool) Filter {
+	q := Query{
+		Kind:    MaskK,
+		Include: inc,
+	}
+	for _, arg := range args {
+		q.Mask |= CntMap[filepath.Ext(arg)]
+	}
+	return q.GetFilter()
+}
 
-		for _, ign := range opts.Ignore {
-			if strings.Contains(fi.Path, ign) {
-				return false
-			}
-		}
+type QueryKind [2]bool
 
-		if excMask > 0 && (excMask&fi.Mask) != 0 {
-			return false
-		}
+var (
+	Substring = QueryKind{false, false}
+	Fuzzy     = QueryKind{true, false}
+	Exact     = QueryKind{false, true}
+	MaskK     = QueryKind{true, true}
+)
 
-		return true
+type Query struct {
+	Value   string
+	Include bool
+	Mask    uint32
+	Kind    QueryKind
+}
+
+func (q Query) GetFilter() (f Filter) {
+	switch q.Kind {
+	case Fuzzy:
+		f = QueryAsFilter(q.Value)
+	case Exact:
+		f = ExactFilter(q.Value)
+	case Substring:
+		fallthrough
+	default:
+		f = SubstringFilter(q.Value)
+	}
+
+	if !q.Include {
+		f = common.Negate(f)
+	}
+	return f
+}
+
+func ExactFilter(search string) Filter {
+	return func(e *Element) bool { return search == e.Name }
+}
+func SubstringFilter(search string) Filter {
+	return func(e *Element) bool {
+		r := strings.Contains(e.Name, search)
+		slog.Debug("substring filter", "name", e.Name, "search", search, "result", r)
+		return r
 	}
 }

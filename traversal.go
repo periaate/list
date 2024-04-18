@@ -3,39 +3,33 @@ package list
 import (
 	"archive/zip"
 	"io/fs"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 )
-
-type Result struct{ Files []*Element }
-
-func (r Result) Sar() []string {
-	res := make([]string, 0, len(r.Files))
-	for _, v := range r.Files {
-		res = append(res, v.Path)
-	}
-	return res
-}
 
 type Element struct {
 	Name      string
 	Path      string // includes name, relative path to cwd
 	Vany      int64  // any numeric value, used for sorting
-	Score     float32
 	Mask      uint32 // file kind, bitmask, see Mask* constants
 	IsDir     bool
 	IsArchive bool // is a readable archive; ziplike
 }
 
-type ResultFilters func(*Element)
+type ResultFn func(*Element)
 
-type FinfoParser func(string, fs.FileInfo) *Element
+type Parser func(string, fs.FileInfo) *Element
 
-func InitFileParser(opts *Options) FinfoParser {
+func InitFileParser(opts *Options) Parser {
 	return func(path string, info fs.FileInfo) *Element {
+		if !opts.NoHide {
+			if _, ok := Hide[info.Name()]; ok || info.Name()[0] == '.' {
+				return nil
+			}
+		}
+		path = filepath.ToSlash(path)
+		path = filepath.Join(path, info.Name())
 		fi := &Element{
 			Name:  info.Name(),
 			Path:  path,
@@ -63,166 +57,87 @@ func InitFileParser(opts *Options) FinfoParser {
 func addModT(fi *Element, info fs.FileInfo) { fi.Vany = info.ModTime().Unix() }
 func addSize(fi *Element, info fs.FileInfo) { fi.Vany = info.Size() }
 
-type Traverser func(*Options, ResultFilters)
+type Yield func(paths []string) (el []*Element, ok bool)
 
-func GetTraverser(opts *Options) Traverser {
-	switch {
-	case opts.ArgMode:
-		return TraverseArgs
-	case opts.FileMode != "":
-		return FileTraverser
-	default:
-		return TraverseFS
-	}
-}
-
-func FileTraverser(opts *Options, rfn ResultFilters) {
-	for _, arg := range opts.Args {
-		b, err := os.ReadFile(arg)
-		if err != nil {
-			slog.Error("error reading file", "arg", arg, "error", err)
-			continue
-		}
-
-		var res []string
-
-		switch opts.FileMode {
-		case "words", "w":
-			res = strings.Fields(string(b))
-		case "lines", "l":
-			res = strings.Split(string(b), "\n")
-		default:
-			res = strings.Split(string(b), "\n")
-		}
-
-		for _, line := range res {
-			rfn(StringParser(line))
-		}
-	}
-}
-
-func TraverseArgs(opts *Options, rfn ResultFilters) {
-	for _, arg := range opts.Args {
-		rfn(StringParser(arg))
-	}
-}
-
-func StringParser(s string) *Element {
-	return &Element{
-		Name: s,
-		Path: s,
-		Mask: CntMap[filepath.Ext(s)], // attempt, not guaranteed to be filepath
-	}
-}
-
-// TraverseFS traverses directories non-recursively and breadth first.
-func TraverseFS(opts *Options, rfn ResultFilters) {
-	// var searchFn = func(string) bool { return true }
-	// if len(opts.DirSearch) != 0 {
-	// 	searchFn = func(str string) bool {
-	// 		for _, k := range opts.DirSearch {
-	// 			if strings.Contains(str, k) {
-	// 				return true
-	// 			}
-	// 		}
-	// 		return false
-	// 	}
-	// }
-	// opts.DirSearch = append(opts.DirSearch, "./")
-
-	parser := InitFileParser(opts)
-
-	dirs := opts.Args
-
-	if len(dirs) == 0 {
-		dirs = append(dirs, "./")
-	}
-
-	tf := func(s string) bool {
-		slog.Debug("default traversal filter", "dir", s)
-		return true
-	}
-	df := func(e *Element) bool {
-		return true
-	}
-	ff := func(e *Element) bool {
-		return true
-	}
-
-	if opts.traversalFpp != nil && opts.traversalFpp.Filter != nil {
-		tf = func(s string) bool { return opts.traversalFpp.Filter(&Element{Name: s}) }
-	}
-	if opts.dirsFpp != nil && opts.dirsFpp.Filter != nil {
-		df = func(e *Element) bool { return opts.dirsFpp.Filter(e) }
-	}
-
-	if opts.filesFpp != nil && opts.filesFpp.Filter != nil {
-		ff = func(e *Element) bool { return opts.filesFpp.Filter(e) }
-	}
-
+func Traverse(opts *Options, yfn Yield, rfn ResultFn) {
 	var depth int
-	for len(dirs) != 0 {
+	dirPaths := opts.Args
+	slog.Debug("traversing", "dirs", dirPaths)
+
+	for els, ok := yfn(dirPaths); ok; els, ok = yfn(dirPaths) {
+		dirPaths = make([]string, 0)
 		if depth > opts.ToDepth {
+			slog.Debug("reached max depth", "depth", depth, "todepth", opts.ToDepth)
 			return
 		}
-		var nd []string
-		for _, d := range dirs {
-			ext := filepath.Ext(d)
-			slog.Debug("traversing", "dir", d, "depth", depth, "ext", ext, "isarchive", CntMap[ext]&MaskZipLike != 0)
 
-			var files []fs.FileInfo
-
-			switch {
-			case opts.Archive && CntMap[ext]&MaskZipLike != 0 && tf(d):
-				files = TraverseZip(d, depth, opts)
-			default:
-				files = TraverseDir(d, depth, opts)
-			}
-
-			for i, info := range files {
-				if i > opts.MaxLimit {
-					break
-				}
-				name := info.Name()
-				path := filepath.Join(d, name)
-				if !opts.NoHide {
-					if _, ok := Hide[name]; ok || name[0] == '.' {
-						continue
-					}
-				}
-
-				if info.IsDir() && tf(path) {
-					nd = append(nd, path)
-				}
-
-				if opts.Archive && filepath.Ext(path) == ".zip" && tf(path) {
-					nd = append(nd, path)
+		for _, el := range els {
+			if el.IsDir {
+				dirPaths = append(dirPaths, el.Path)
+				if opts.FileOnly {
 					continue
 				}
-
-				if depth < opts.FromDepth {
+				if opts.DirOnly {
+					rfn(el)
 					continue
 				}
-
-				p := parser(path, info)
-
-				if info.IsDir() && df(p) {
-					rfn(p)
-				} else if !info.IsDir() && ff(p) {
-					rfn(p)
-				}
 			}
+
+			if depth < opts.FromDepth {
+				slog.Debug("skipping", "element", el.Path, "depth", depth)
+				continue
+			}
+
+			rfn(el)
 		}
 
-		dirs = nd
 		depth++
 	}
 }
 
-func TraverseDir(path string, depth int, opts *Options) (files []fs.FileInfo) {
+func GetYieldFs(opts *Options) Yield {
+	parser := InitFileParser(opts)
+	return func(paths []string) (els []*Element, ok bool) {
+		slog.Debug("yielding", "paths", len(paths))
+		if len(paths) == 0 {
+			return nil, false
+		}
+		for _, path := range paths {
+			var err error
+			var finfos []fs.FileInfo
+			switch {
+			case opts.Archive && IsZipLike(path):
+				finfos, err = TraverseZip(path)
+			default:
+				finfos, err = TraverseDir(path)
+			}
+			if err != nil {
+				slog.Error("error during traversal", "err", err)
+				continue
+			}
+
+			for _, finfo := range finfos {
+				el := parser(path, finfo)
+				if el != nil {
+					els = append(els, el)
+				}
+			}
+
+		}
+		if len(els) == 0 {
+			slog.Debug("no elements found")
+			return nil, false
+		}
+		ok = true
+		slog.Debug("yielding", "elements", len(els))
+		return
+	}
+}
+
+func TraverseDir(path string) (files []fs.FileInfo, err error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 	for _, entry := range entries {
 		info, err := entry.Info()
@@ -230,33 +145,19 @@ func TraverseDir(path string, depth int, opts *Options) (files []fs.FileInfo) {
 			slog.Error("error reading file info", "file", entry.Name(), "error", err)
 			continue
 		}
-		switch {
-		case opts.DirOnly && info.IsDir():
-			files = append(files, info)
-		case opts.FileOnly && !info.IsDir():
-			files = append(files, info)
-		default:
-			files = append(files, info)
-		}
-
+		files = append(files, info)
 	}
 	return
 }
 
-func TraverseZip(path string, depth int, opts *Options) (files []fs.FileInfo) {
+func TraverseZip(path string) (files []fs.FileInfo, err error) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 	defer r.Close()
 
 	for _, f := range r.File {
-		fn := filepath.ToSlash(f.Name)
-
-		fdepth := depth + strings.Count(fn, "/")
-		if fdepth < opts.FromDepth || fdepth > opts.ToDepth {
-			continue
-		}
 		info := f.FileInfo()
 		if info.IsDir() {
 			continue
@@ -268,13 +169,13 @@ func TraverseZip(path string, depth int, opts *Options) (files []fs.FileInfo) {
 	return
 }
 
-func InitFilters(fns []Filter, res *Result) ResultFilters {
-	return func(fi *Element) {
-		for _, fn := range fns {
-			if !fn(fi) {
-				return
-			}
+func IsZipLike(path string) bool { return CntMap[filepath.Ext(path)]&MaskZipLike != 0 }
+
+func GetRfn(f Filter, res []*Element) ResultFn {
+	return func(el *Element) {
+		if !f(el) {
+			return
 		}
-		res.Files = append(res.Files, fi)
+		res = append(res, el)
 	}
 }
