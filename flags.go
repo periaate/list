@@ -49,8 +49,7 @@ type Options struct {
 	FromDepth int
 	Queries   []Query
 
-	ExecArgs []string
-	Args     []string
+	Args []string
 
 	Filters   []func(*Element) bool
 	Processes []func(els []*Element) []*Element
@@ -74,15 +73,8 @@ func Parse(args []string) *Options {
 			args = append(args[:ind], args[ind+1:]...)
 		}
 	}
-	var execArgs []string
 
-	if _, i := common.First(args, func(f string) bool { return f == "::" }); i != -1 {
-		// drop the "::", everything after goes to execargs
-		execArgs = args[i+1:]
-		args = args[:i]
-	}
 	opts := &Options{
-		ExecArgs:  execArgs,
 		Filters:   []func(*Element) bool{NoneFilter},
 		Processes: []func(els []*Element) []*Element{NoneProcess},
 		ToDepth:   0,

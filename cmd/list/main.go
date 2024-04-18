@@ -16,11 +16,5 @@ func main() {
 	}
 
 	res := list.Run(opts)
-
-	if opts.ExecArgs != nil || len(opts.ExecArgs) != 0 {
-		list.Exec(res, opts)
-		return
-	}
-
 	list.PrintWithBuf(res, opts)
 }

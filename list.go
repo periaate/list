@@ -4,10 +4,7 @@ import (
 	"bufio"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
-
-	"github.com/periaate/common"
 )
 
 type Result struct {
@@ -37,22 +34,6 @@ func Initialize(opts *Options) ([]*Element, Filter, Process) {
 func Do(args ...string) []*Element {
 	opts := Parse(args)
 	return Run(opts)
-}
-
-func Exec(res []*Element, opts *Options) {
-	opts.ExecArgs = append(opts.ExecArgs, common.Collect(res, func(e *Element) string { return e.Name })...)
-
-	cmd := exec.Command(opts.ExecArgs[0], opts.ExecArgs[1:]...)
-	cmd.Stdout = os.Stdout
-	if opts.Debug {
-		cmd.Stderr = os.Stderr
-	}
-	cmd.Stdin = os.Stdin
-
-	err := cmd.Run()
-	if err != nil {
-		slog.Debug("error running command", "err", err)
-	}
 }
 
 const bufLength = 500
