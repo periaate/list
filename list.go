@@ -10,16 +10,20 @@ import (
 	"github.com/periaate/common"
 )
 
+type Result struct {
+	Files []*Element
+}
+
 func Run(opts *Options) []*Element {
-	res := []*Element{}
+	res := &Result{}
 	rfn := GetRfn(CollectFilters(opts), res)
 	process := CollectProcess(opts)
 	yfn := GetYieldFs(opts)
 	Traverse(opts, yfn, rfn)
 
-	res = process(res)
-	slog.Debug("final result", "len", len(res))
-	return res
+	res.Files = process(res.Files)
+	slog.Debug("final result", "len", len(res.Files))
+	return res.Files
 }
 
 func Initialize(opts *Options) ([]*Element, Filter, Process) {

@@ -1,7 +1,6 @@
 package list
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"math"
@@ -86,11 +85,12 @@ func Parse(args []string) *Options {
 		ExecArgs:  execArgs,
 		Filters:   []func(*Element) bool{NoneFilter},
 		Processes: []func(els []*Element) []*Element{NoneProcess},
+		ToDepth:   0,
+		FromDepth: -1,
 	}
 	opts.MaxLimit = math.MaxInt64
 
 	args = ApplyFlags(args, opts)
-	fmt.Println(len(opts.Filters), len(opts.Processes))
 	rest, err := gf.ParseArgs(opts, args)
 	if err != nil {
 		if gf.WroteHelp(err) {
@@ -98,7 +98,6 @@ func Parse(args []string) *Options {
 		}
 		log.Fatalln("Error parsing flags:", err)
 	}
-	fmt.Println(len(opts.Filters), len(opts.Processes))
 	opts.Args = rest
 
 	if opts.Debug {

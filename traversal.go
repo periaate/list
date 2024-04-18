@@ -171,11 +171,11 @@ func TraverseZip(path string) (files []fs.FileInfo, err error) {
 
 func IsZipLike(path string) bool { return CntMap[filepath.Ext(path)]&MaskZipLike != 0 }
 
-func GetRfn(f Filter, res []*Element) ResultFn {
+func GetRfn(f Filter, res *Result) ResultFn {
 	return func(el *Element) {
 		if !f(el) {
 			return
 		}
-		res = append(res, el)
+		res.Files = append(res.Files, el)
 	}
 }
