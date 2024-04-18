@@ -172,8 +172,8 @@ func GetSearchFilter(pat string, exclude bool) (res Filter) {
 	switch pat[0] {
 	case '=':
 		res = getMatch(pat[1:])
-	case '~':
-		res = QueryAsFilter(pat[1:])
+	// case '~':
+	// 	res = QueryAsFilter(pat[1:])
 	default:
 		res = getSubstringMatch(pat[1:])
 	}

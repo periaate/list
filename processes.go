@@ -48,8 +48,8 @@ func CollectProcess(opts *Options) []Process {
 	var fns []Process
 
 	switch {
-	case len(opts.Query) > 0:
-		fns = append(fns, QueryProcess(opts))
+	// case len(opts.Query) > 0:
+	// 	fns = append(fns, QueryProcess(opts))
 	case opts.Ascending || len(opts.Sort) != 0:
 		sorting := StrToSortBy(opts.Sort)
 
@@ -125,6 +125,14 @@ func SliceProcess(patterns []string) Process {
 		if err != nil {
 			slog.Error("error in Slice", "error", err)
 		}
+		return
+	}
+}
+
+func LookBehind() Process {
+	return func(els []*Element) (res []*Element) {
+		res = make([]*Element, 0, len(els))
+
 		return
 	}
 }

@@ -117,6 +117,9 @@ func CollectFilters(opts *Options) []Filter {
 	if (len(opts.Search) + len(opts.Include) + len(opts.Exclude) + len(opts.Ignore)) > 0 {
 		fns = append(fns, FilterList(opts))
 	}
+	if len(opts.Query) > 0 {
+		fns = append(fns, QueryAsFilter(opts.Query))
+	}
 	return fns
 }
 

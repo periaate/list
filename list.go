@@ -7,6 +7,7 @@ import (
 	"os"
 
 	gf "github.com/jessevdk/go-flags"
+	"github.com/periaate/clf"
 	"github.com/periaate/common"
 )
 
@@ -58,12 +59,9 @@ type FilterOpts struct {
 type ProcessOpts struct {
 	Query     []string `short:"q" long:"query" description:"Fuzzy search query. Results will be ordered by their score."`
 	Ascending bool     `short:"a" long:"ascending" description:"Results will be ordered in ascending order. Files are ordered into descending order by default."`
+	Reverse   bool     `short:"R" long:"reverse" description:"The exact same as the ascending flag."`
 
 	Sort string `short:"S" long:"sort" description:"Sort the result by word." default:"none" choice:"none" choice:"name" choice:"n" choice:"mod" choice:"time" choice:"t" choice:"size" choice:"s" choice:"creation" choice:"c"`
-
-	// Mod      bool `long:"mod" description:"Results will be ordered by their modified time."`
-	// Size     bool `long:"size" description:"Results will be ordered by their size time."`
-	// None     bool `long:"none" description:"Results will be ordered by their modified time."`
 
 	Select []string `long:"select" description:"Select a single element or a range of elements. Usage: [{index}] [{from}:{to}] Supports negative indexing. Can be used without a flag as the last argument."`
 
@@ -137,6 +135,8 @@ func Parse(args []string) *Options {
 		slog.Debug("Found implicit commands", "len", bef-len(opts.Args))
 	}
 
+	d(opts.Args, opts)
+
 	return opts
 }
 
@@ -148,43 +148,43 @@ func Implicit(opts *Options) {
 
 	newArgs := make([]string, 0, len(opts.Args))
 	for _, arg := range opts.Args {
-		fpp, ok := TargetedSearch(opts, arg)
+		// 	fpp, ok := TargetedSearch(opts, arg)
 
-		if !ok {
-			goto Old
-		}
+		// 	if !ok {
+		// 		goto Old
+		// 	}
 
-		if fpp == nil {
-			continue
-		}
-		switch fpp.Tar {
-		case traversal:
-			if opts.traversalFpp != nil && opts.traversalFpp.Filter != nil {
-				slog.Debug("found traversal filter", "filter", fpp.Filter)
-				opts.traversalFpp.Filter = common.All(true, opts.traversalFpp.Filter, fpp.Filter)
-				continue
-			}
-			slog.Debug("didn't find traversal filter", "filter", fpp.Filter)
-			opts.traversalFpp = fpp
-			continue
-		case files:
-			if opts.filesFpp != nil && opts.filesFpp.Filter != nil && opts.filesFpp.Process != nil {
-				opts.filesFpp.Filter = common.All(true, opts.filesFpp.Filter, fpp.Filter)
-				opts.filesFpp.Process = common.Pipe(opts.filesFpp.Process, fpp.Process)
-				continue
-			}
-			opts.filesFpp = fpp
-			continue
-		case dirs:
-			if opts.dirsFpp != nil && opts.dirsFpp.Filter != nil && opts.dirsFpp.Process != nil {
-				opts.dirsFpp.Filter = common.All(true, opts.dirsFpp.Filter, fpp.Filter)
-				opts.dirsFpp.Process = common.Pipe(opts.dirsFpp.Process, fpp.Process)
-				continue
-			}
-			opts.dirsFpp = fpp
-			continue
-		}
-	Old:
+		// 	if fpp == nil {
+		// 		continue
+		// 	}
+		// 	switch fpp.Tar {
+		// 	case traversal:
+		// 		if opts.traversalFpp != nil && opts.traversalFpp.Filter != nil {
+		// 			slog.Debug("found traversal filter", "filter", fpp.Filter)
+		// 			opts.traversalFpp.Filter = common.All(true, opts.traversalFpp.Filter, fpp.Filter)
+		// 			continue
+		// 		}
+		// 		slog.Debug("didn't find traversal filter", "filter", fpp.Filter)
+		// 		opts.traversalFpp = fpp
+		// 		continue
+		// 	case files:
+		// 		if opts.filesFpp != nil && opts.filesFpp.Filter != nil && opts.filesFpp.Process != nil {
+		// 			opts.filesFpp.Filter = common.All(true, opts.filesFpp.Filter, fpp.Filter)
+		// 			opts.filesFpp.Process = common.Pipe(opts.filesFpp.Process, fpp.Process)
+		// 			continue
+		// 		}
+		// 		opts.filesFpp = fpp
+		// 		continue
+		// 	case dirs:
+		// 		if opts.dirsFpp != nil && opts.dirsFpp.Filter != nil && opts.dirsFpp.Process != nil {
+		// 			opts.dirsFpp.Filter = common.All(true, opts.dirsFpp.Filter, fpp.Filter)
+		// 			opts.dirsFpp.Process = common.Pipe(opts.dirsFpp.Process, fpp.Process)
+		// 			continue
+		// 		}
+		// 		opts.dirsFpp = fpp
+		// 		continue
+		// 	}
+		// Old:
 		if len(arg) > 2 && arg[0] == '[' && arg[len(arg)-1] == ']' {
 			opts.Select = append(opts.Select, arg)
 			slog.Debug("implicitly found cmd", "type", "Slice", "arg", arg)
@@ -226,4 +226,39 @@ var pairs = map[rune]func(*Options){
 	'C': func(opts *Options) { opts.Count = true },
 	'R': func(opts *Options) { opts.Ascending = true },
 	'M': func(opts *Options) { opts.MaxLimit = 1000 },
+}
+
+var file = &clf.Flag{
+	Keys: []string{"f"},
+	Name: "file",
+}
+
+var recurse = &clf.Flag{
+	Toggle: true,
+	Keys:   []string{"r"},
+	Name:   "recurse",
+}
+
+var incl = &clf.Flag{
+	Keys: []string{"i"},
+	Name: "include",
+}
+
+func d(args []string, opts *Options) {
+	op, err := clf.Parse(args, []*clf.Flag{file, recurse, incl})
+	if err != nil {
+		return
+	}
+
+	opts.Args = op.Rest
+
+	if op.Get("recurse").Present != 0 {
+		Recurse(opts)
+	}
+	if len(op.Get("include").Values) != 0 {
+		opts.Include = append(opts.Include, op.Get("include").Values...)
+	}
+	if len(op.Get("file").Values) != 0 {
+		opts.Query = append(opts.Query, op.Get("file").Values...)
+	}
 }

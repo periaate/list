@@ -27,19 +27,19 @@ func (s ScoredFiles[T]) Items() []T {
 	return items
 }
 
-func QueryProcess(opts *Options) Process {
-	return func(filenames []*Element) []*Element {
-		scorer := GetScoringFunction(opts.Query)
-		scorable := ScoredFiles[*Element](make([]scored[*Element], len(filenames)))
-		for i, file := range filenames {
-			score := scorer(file.Name)
-			scorable[i] = scored[*Element]{file, score}
-		}
+// func QueryProcess(opts *Options) Process {
+// 	return func(filenames []*Element) []*Element {
+// 		scorer := GetScoringFunction(opts.Query)
+// 		scorable := ScoredFiles[*Element](make([]scored[*Element], len(filenames)))
+// 		for i, file := range filenames {
+// 			score := scorer(file.Name)
+// 			scorable[i] = scored[*Element]{file, score}
+// 		}
 
-		SortByScore(scorable)
-		return scorable.Items()
-	}
-}
+// 		SortByScore(scorable)
+// 		return scorable.Items()
+// 	}
+// }
 
 func GetScoringFunction(queries []string) func(string) float32 {
 	queryGrams, _ := GenNgrams(queries, N)
@@ -87,8 +87,8 @@ func SortByScore[T any](files ScoredFiles[T]) {
 	})
 }
 
-func QueryAsFilter(qr string) Filter {
-	scorer := GetScoringFunction([]string{qr})
+func QueryAsFilter(qr []string) Filter {
+	scorer := GetScoringFunction(qr)
 	return func(e *Element) bool {
 		score := scorer(e.Name)
 		slog.Debug("query filter", "name", e.Name, "score", score)
