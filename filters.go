@@ -216,8 +216,9 @@ func ExactFilter(search string) Filter {
 	return func(e *Element) bool { return search == e.Name }
 }
 func SubstringFilter(search string) Filter {
+	search = strings.ToLower(search)
 	return func(e *Element) bool {
-		r := strings.Contains(e.Name, search)
+		r := strings.Contains(strings.ToLower(e.Name), search)
 		slog.Debug("substring filter", "name", e.Name, "search", search, "result", r)
 		return r
 	}

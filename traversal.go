@@ -130,7 +130,7 @@ func GetYieldFs(opts *Options) Yield {
 				finfos, err = TraverseDir(path)
 			}
 			if err != nil {
-				slog.Error("error during traversal", "err", err)
+				slog.Debug("error during traversal", "err", err)
 				continue
 			}
 
@@ -160,7 +160,7 @@ func TraverseDir(path string) (files []fs.FileInfo, err error) {
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
-			slog.Error("error reading file info", "file", entry.Name(), "error", err)
+			slog.Debug("error reading file info", "file", entry.Name(), "error", err)
 			continue
 		}
 		files = append(files, info)

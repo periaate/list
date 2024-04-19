@@ -59,6 +59,7 @@ type Options struct {
 func NoneFilter(*Element) bool              { return true }
 func NoneProcess(els []*Element) []*Element { return els }
 
+// Parse is used to parse command line or string arguments to the Options struct.
 func Parse(args []string) *Options {
 	opts := &Options{
 		Filters:   []func(*Element) bool{NoneFilter},
@@ -77,7 +78,7 @@ func Parse(args []string) *Options {
 	}
 	opts.Args = rest
 
-	args = ApplyFlags(opts.Args, opts)
+	opts.Args = ApplyFlags(opts.Args, opts)
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
@@ -167,9 +168,9 @@ func ApplyFlags(args []string, opts *Options) []string {
 		switch flag.Name {
 		case "only":
 			switch flag.Values[0] {
-			case "file", "f":
+			case "file", "f", "files":
 				opts.OnlyFiles = true
-			case "dir", "d":
+			case "dir", "d", "dirs":
 				opts.DirOnly = true
 			}
 		case "recurse":
