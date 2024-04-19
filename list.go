@@ -31,14 +31,8 @@ func Initialize(opts *Options) ([]*Element, Filter, Process) {
 	return res, filters, processes
 }
 
-func Do(args ...string) []*Element {
-	opts := Parse(args)
-	return Run(opts)
-}
-
-const bufLength = 500
-
 func PrintWithBuf(els []*Element, opts *Options) {
+	const bufLength = 500
 	if len(els) == 0 {
 		return
 	}

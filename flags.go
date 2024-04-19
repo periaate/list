@@ -8,7 +8,6 @@ import (
 
 	gf "github.com/jessevdk/go-flags"
 	"github.com/periaate/clf"
-	"github.com/periaate/common"
 	"github.com/periaate/slice"
 )
 
@@ -22,8 +21,8 @@ type ListingOpts struct {
 type FilterOpts struct {
 	Search []string `short:"s" long:"search" description:""`
 
-	DirOnly  bool `long:"dirs" description:"Only include directories in the result."`
-	FileOnly bool `long:"files" description:"Only include files in the result."`
+	DirOnly   bool `long:"dirs" description:"Only include directories in the result."`
+	OnlyFiles bool `long:"files" description:"Only include files in the result."`
 }
 
 type ProcessOpts struct {
@@ -57,23 +56,10 @@ type Options struct {
 	Select []string
 }
 
-func Recurse(opts *Options) {
-	opts.ToDepth = math.MaxInt64
-}
-
 func NoneFilter(*Element) bool              { return true }
 func NoneProcess(els []*Element) []*Element { return els }
 
 func Parse(args []string) *Options {
-	if _, ind := common.First(args, func(s string) bool { return s == "-D" }); ind != -1 {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-		if ind == len(args)-1 {
-			args = args[:ind]
-		} else {
-			args = append(args[:ind], args[ind+1:]...)
-		}
-	}
-
 	opts := &Options{
 		Filters:   []func(*Element) bool{NoneFilter},
 		Processes: []func(els []*Element) []*Element{NoneProcess},
@@ -82,7 +68,6 @@ func Parse(args []string) *Options {
 	}
 	opts.MaxLimit = math.MaxInt64
 
-	args = ApplyFlags(args, opts)
 	rest, err := gf.ParseArgs(opts, args)
 	if err != nil {
 		if gf.WroteHelp(err) {
@@ -92,6 +77,7 @@ func Parse(args []string) *Options {
 	}
 	opts.Args = rest
 
+	args = ApplyFlags(opts.Args, opts)
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
@@ -182,7 +168,7 @@ func ApplyFlags(args []string, opts *Options) []string {
 		case "only":
 			switch flag.Values[0] {
 			case "file", "f":
-				opts.FileOnly = true
+				opts.OnlyFiles = true
 			case "dir", "d":
 				opts.DirOnly = true
 			}
@@ -199,7 +185,7 @@ func ApplyFlags(args []string, opts *Options) []string {
 				continue
 			}
 			slog.Debug("recurse call")
-			Recurse(opts)
+			opts.ToDepth = math.MaxInt
 		case "is":
 			opts.Filters = append(opts.Filters, ParseKind(flag.Values, true))
 		case "not":

@@ -59,9 +59,27 @@ func addSize(fi *Element, info fs.FileInfo) { fi.Vany = info.Size() }
 
 type Yield func(paths []string) (el []*Element, ok bool)
 
+func ResolveHome(path string) string {
+	if len(path) == 0 {
+		return path
+	}
+	if path[0] == '~' {
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			slog.Error("error resolving home dir", "error", err)
+			return path
+		}
+		path = filepath.Join(dirname, path[1:])
+	}
+	return path
+}
+
 func Traverse(opts *Options, yfn Yield, rfn ResultFn) {
 	var depth int
 	dirPaths := opts.Args
+	for i, path := range dirPaths {
+		dirPaths[i] = ResolveHome(path)
+	}
 	slog.Debug("traversing", "dirs", dirPaths)
 
 	for els, ok := yfn(dirPaths); ok; els, ok = yfn(dirPaths) {
@@ -74,7 +92,7 @@ func Traverse(opts *Options, yfn Yield, rfn ResultFn) {
 		for _, el := range els {
 			if el.IsDir {
 				dirPaths = append(dirPaths, el.Path)
-				if opts.FileOnly {
+				if opts.OnlyFiles {
 					continue
 				}
 				if opts.DirOnly {

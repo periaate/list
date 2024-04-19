@@ -111,7 +111,7 @@ func CollectFilters(opts *Options) Filter {
 		opts.Filters = append(opts.Filters, func(fi *Element) bool {
 			return fi.IsDir
 		})
-	case opts.FileOnly:
+	case opts.OnlyFiles:
 		opts.Filters = append(opts.Filters, func(fi *Element) bool {
 			return !fi.IsDir
 		})
@@ -133,14 +133,15 @@ func ParseSearch(args []string) Filter {
 		switch {
 		case len(arg) < 2:
 			continue
-		case arg[:2] == "-=":
+		case arg[:2] == "!=":
 			arg = arg[1:]
 			q.Include = false
 			fallthrough
 		case arg[0] == '=':
+			arg = arg[1:]
 			q.Value = arg
 			q.Kind = Exact
-		case arg[0] == '-':
+		case arg[0] == '!':
 			arg = arg[1:]
 			q.Include = false
 			fallthrough
