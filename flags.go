@@ -7,8 +7,6 @@ import (
 	"os"
 
 	gf "github.com/jessevdk/go-flags"
-	"github.com/periaate/clf"
-	"github.com/periaate/slice"
 )
 
 type ListingOpts struct {
@@ -43,21 +41,7 @@ type Options struct {
 	FilterOpts  `group:"Filtering options - Applied while traversing, called on every entry found."`
 	ProcessOpts `group:"Processing options - Applied after traversal, called on the final list of files."`
 	Printing    `group:"Printing options - Determines how the results are printed."`
-
-	ToDepth   int
-	FromDepth int
-	Queries   []Query
-
-	Args []string
-
-	Filters   []func(*Element) bool
-	Processes []func(els []*Element) []*Element
-
-	Select []string
 }
-
-func NoneFilter(*Element) bool              { return true }
-func NoneProcess(els []*Element) []*Element { return els }
 
 // Parse is used to parse command line or string arguments to the Options struct.
 func Parse(args []string) *Options {
@@ -115,89 +99,4 @@ func Implicit(opts *Options) {
 	}
 
 	opts.Args = newArgs
-}
-
-var flags = []*clf.Flag{
-	{
-		Name:        "only",
-		Greedy:      true, // Only capture at most 1 value
-		Keys:        []string{"only"},
-		Description: "Only files or only dirs",
-		Exactly:     1,
-	},
-	{
-		Name:        "recurse",
-		Greedy:      true, // Only capture at most 1 value
-		Keys:        []string{"r", "recurse"},
-		Description: "Toggles on infinite depth, or can be given a depth slice",
-		AtMost:      1,
-	},
-	{
-		Name:        "is",
-		Keys:        []string{"is", "?"},
-		Description: "File type inference inclusion; e.g., image, video, etc.",
-		AtLeast:     1,
-	},
-	{
-		Name:        "not",
-		Keys:        []string{"not", "!"},
-		Description: "File type inference exclusion; e.g., image, video, etc.",
-		AtLeast:     1,
-	},
-	{
-		Name:        "where",
-		Keys:        []string{"where", "s"},
-		Description: "File type inference exclusion; e.g., image, video, etc.",
-		AtLeast:     1,
-	},
-}
-
-func ApplyFlags(args []string, opts *Options) []string {
-	if len(args) == 0 {
-		slog.Debug("clf flags: no args found")
-		return args
-	}
-	op, err := clf.Parse(args, flags)
-	if err != nil {
-		slog.Debug("Error parsing clf flags", "error", err)
-		return args
-	}
-
-	opts.Args = op.Rest
-	for _, flag := range op.Yield() {
-		switch flag.Name {
-		case "only":
-			switch flag.Values[0] {
-			case "file", "f", "files":
-				opts.OnlyFiles = true
-			case "dir", "d", "dirs":
-				opts.DirOnly = true
-			}
-		case "recurse":
-			slog.Debug("found clf flag", "type", flag.Name)
-			if len(flag.Values) > 0 {
-				f, t, err := slice.ParsePattern(flag.Values[0], math.MaxInt)
-				if err != nil {
-					continue
-				}
-				slog.Debug("recurse range", "from", f, "to", t)
-				opts.FromDepth = f
-				opts.ToDepth = t
-				continue
-			}
-			slog.Debug("recurse call")
-			opts.ToDepth = math.MaxInt
-		case "is":
-			opts.Filters = append(opts.Filters, ParseKind(flag.Values, true))
-		case "not":
-			opts.Filters = append(opts.Filters, ParseKind(flag.Values, false))
-		case "where":
-			opts.Filters = append(opts.Filters, ParseSearch(flag.Values))
-		}
-	}
-
-	if len(args) != len(op.Rest) {
-		slog.Debug("found clf flags", "diff", len(args)-len(op.Rest))
-	}
-	return op.Rest
 }

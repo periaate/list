@@ -5,33 +5,22 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/periaate/ls/lfs"
 )
 
-type Result struct {
-	Files []*Element
+type Lister struct {
+	Els  []*lfs.Element
+	Args []string
 }
 
-func Run(opts *Options) []*Element {
-	res := &Result{}
-	rfn := GetRfn(CollectFilters(opts), res)
-	process := CollectProcess(opts)
-	yfn := GetYieldFs(opts)
-	Traverse(opts, yfn, rfn)
-
+func Parse(args []string) *Lister {
 	res.Files = process(res.Files)
 	slog.Debug("final result", "len", len(res.Files))
 	return res.Files
 }
 
-func Initialize(opts *Options) ([]*Element, Filter, Process) {
-	res := []*Element{}
-	filters := CollectFilters(opts)
-	processes := CollectProcess(opts)
-
-	return res, filters, processes
-}
-
-func PrintWithBuf(els []*Element, opts *Options) {
+func PrintWithBuf(els []*lfs.Element, opts *Options) {
 	const bufLength = 500
 	if len(els) == 0 {
 		return
