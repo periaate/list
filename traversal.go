@@ -84,10 +84,6 @@ func Traverse(opts *Options, yfn Yield, rfn ResultFn) {
 
 	for els, ok := yfn(dirPaths); ok; els, ok = yfn(dirPaths) {
 		dirPaths = make([]string, 0)
-		if depth > opts.ToDepth {
-			slog.Debug("reached max depth", "depth", depth, "todepth", opts.ToDepth)
-			return
-		}
 
 		for _, el := range els {
 			if el.IsDir {
@@ -110,6 +106,10 @@ func Traverse(opts *Options, yfn Yield, rfn ResultFn) {
 		}
 
 		depth++
+		if depth > opts.ToDepth {
+			slog.Debug("reached max depth", "depth", depth, "todepth", opts.ToDepth)
+			return
+		}
 	}
 }
 

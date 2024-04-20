@@ -78,13 +78,13 @@ func Parse(args []string) *Options {
 	}
 	opts.Args = rest
 
+	Implicit(opts)
 	opts.Args = ApplyFlags(opts.Args, opts)
 	if opts.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	bef := len(opts.Args)
-	Implicit(opts)
 	if bef != len(opts.Args) {
 		slog.Debug("Found implicit commands", "len", bef-len(opts.Args))
 	}

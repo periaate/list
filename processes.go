@@ -57,13 +57,14 @@ func CollectProcess(opts *Options) Process {
 	if len(opts.Select) > 0 {
 		opts.Processes = append(opts.Processes, SliceProcess(opts.Select))
 	}
-	return common.Pipe(opts.Processes...)
+
+	return common.Pipe(Reverse(opts.Processes)...)
 }
 
-func Reverse[T any](filenames []T) (res []T) {
-	res = make([]T, 0, len(filenames))
-	for i := len(filenames) - 1; i >= 0; i-- {
-		res = append(res, filenames[i])
+func Reverse[T any](arr []T) (res []T) {
+	res = make([]T, 0, len(arr))
+	for i := len(arr) - 1; i >= 0; i-- {
+		res = append(res, arr[i])
 	}
 	return
 }
@@ -95,7 +96,7 @@ func SliceProcess(patterns []string) Process {
 	return func(filenames []*Element) (res []*Element) {
 		res, err := exp.Eval(filenames)
 		if err != nil {
-			slog.Error("error in Slice", "error", err)
+			slog.Debug("error in Slice", "error", err)
 		}
 		return
 	}
