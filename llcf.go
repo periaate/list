@@ -61,18 +61,52 @@ func (r *Runner) Sort(args []string) {
 }
 
 func (r *Runner) Search(args []string) {
-	r.options = append(r.options, ls.Search(args...))
+	if !r.direct {
+		r.options = append(r.options, ls.Search(args...))
+		return
+	}
+
+	f := ls.ParseSearch(args)
+	if f != nil {
+		r.processes = append(r.processes, FilterAsProcess(f))
+	}
+}
+
+func FilterAsProcess(f ls.Filter) ls.Process {
+	return func(inp []*lfs.Element) (out []*lfs.Element) {
+		for _, el := range inp {
+			slog.Debug("filtering", "element", el, "filtered", f(el))
+			if f(el) {
+				out = append(out, el)
+			}
+		}
+		return
+	}
 }
 
 func (r *Runner) Dir(args ...string) {
 	r.paths = append(r.paths, args...)
 }
 
+func (r *Runner) LogWith(_ ...string) {
+	opt := ls.LogWith(slog.Default())
+	r.options = append(r.options, opt)
+}
+
+var logging bool
+
 func (r *Runner) Eval() (rr []*lfs.Element) {
 	if !r.direct {
 		if len(r.paths) == 0 {
 			r.paths = append(r.paths, "./")
 		}
+
+		if Log != nil && !logging {
+			slog.Debug("logging enabled")
+			r.LogWith()
+			logging = true
+		}
+
 		r.options = append(r.options, ls.Paths(r.paths...))
 		r.options = common.ReverseC(r.options)
 		if len(r.options) != 0 {
@@ -83,7 +117,7 @@ func (r *Runner) Eval() (rr []*lfs.Element) {
 		rr = ls.Do(r.processes...)
 	} else {
 		rr = res
-		slog.Debug("direct eval", "results", len(res))
+		slog.Debug("direct eval", "results", len(res), "processes", len(r.processes))
 		for _, proc := range r.processes {
 			rr = proc(rr)
 		}
@@ -99,7 +133,7 @@ func RunList(args []string) {
 	thenR := SplitArgs(args, "then")
 	if len(thenR) == 0 {
 		sar := SplitArgs(args, "also")
-		slog.Info("sar", "len", len(sar))
+		slog.Debug("sar", "len", len(sar))
 		if len(sar) == 0 {
 			rr := RunExpr(args)
 			res = rr
@@ -129,6 +163,7 @@ func RunAlso(exprs [][]string) {
 	for i, args := range exprs {
 		slog.Debug("run also loop", "iteration", i, "args", args)
 		rr := RunExpr(args)
+		slog.Debug("run also loop", "iteration", i, "results", len(rr))
 		sum = append(sum, rr...)
 	}
 

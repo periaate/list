@@ -2,6 +2,7 @@ package list
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/periaate/clf"
 	"github.com/periaate/common"
@@ -12,6 +13,7 @@ var (
 	version = "undefined"
 	run     = &Runner{}
 	res     []*lfs.Element
+	Log     *slog.Logger
 )
 
 var Program = clf.Register(
@@ -42,7 +44,7 @@ var flags = common.Join(
 			Handler: run.Sort},
 		{Keys: []string{"search", "where", "?"}, AtLeast: 1, Description: "Search by name.",
 			Handler: run.Search},
-		{Keys: []string{"reverse", "a", "asc"}, AtLeast: 1, Description: "Search by name.",
+		{Keys: []string{"reverse"}, AtLeast: 1, Description: "Search by name.",
 			Handler: run.Reverse},
 
 		{Keys: []string{"absolute", "abs", "A"}, AtLeast: 1, Description: "Absolute paths.",
@@ -51,7 +53,11 @@ var flags = common.Join(
 	clf.Group("other", []*clf.Flag{
 		{Name: "debug", Keys: []string{"--debug", "-D"}, Exactly: -1,
 			Description: "Set debug level.",
-			Handler:     func(_ []string) { slog.SetLogLoggerLevel(slog.LevelDebug) }},
+			Handler: func(_ []string) {
+				Log = common.NewClog(os.Stdout, nil)
+				clf.SetGlobalLogger(Log)
+				slog.SetDefault(Log)
+			}},
 		{Name: "quiet", Keys: []string{"--quiet", "-Q"}, Exactly: -1,
 			Description: "Don't print results.",
 			Handler:     func(_ []string) { Quiet = true }},
