@@ -118,7 +118,7 @@ func RunList(args []string) {
 }
 
 func RunExpr(args []string) []*lfs.Element {
-	rest, _ := program.Eval(args)
+	rest, _ := Program.Eval(args)
 	run.paths = append(run.paths, rest...)
 	return run.Eval()
 	// res = append(res, run.Eval()...)

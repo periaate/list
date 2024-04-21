@@ -3,12 +3,14 @@ package main
 import (
 	"os"
 
-	"github.com/periaate/clf"
 	"github.com/periaate/list"
 )
 
 func main() {
-	rest := clf.Run(os.Args[1:], fl)
+	rest := list.Program.EvalOnly(os.Args[1:], []string{"quiet", "help", "debug"})
+	if list.Program.PrintedHelp() {
+		return
+	}
 
 	list.PrintWithBuf(list.Parse(rest))
 }
