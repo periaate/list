@@ -30,6 +30,10 @@ func (r *Runner) Reverse(args []string) {
 	})
 }
 
+func (r *Runner) All(args []string) {
+	r.options = append(r.options, ls.NoHide)
+}
+
 func (r *Runner) Is(args []string) {
 	slog.Debug("is", "args", args)
 	var masks []uint32

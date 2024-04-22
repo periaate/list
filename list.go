@@ -25,7 +25,7 @@ func PrintWithBuf(els []*lfs.Element) {
 		return
 	}
 	if Quiet {
-		slog.Debug("quiet flag is set, returning from print function")
+		slog.Debug("quiet flag found, returning...")
 		return
 	}
 

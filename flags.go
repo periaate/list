@@ -46,6 +46,8 @@ var flags = common.Join(
 			Handler: run.Search},
 		{Keys: []string{"reverse"}, AtLeast: 1, Description: "Search by name.",
 			Handler: run.Reverse},
+		{Keys: []string{"all", "h"}, AtLeast: 1, Description: "Include everything.",
+			Handler: run.All},
 
 		{Keys: []string{"absolute", "abs", "A"}, AtLeast: 1, Description: "Absolute paths.",
 			Handler: func(_ []string) { Abs = true }},
@@ -54,7 +56,7 @@ var flags = common.Join(
 		{Name: "debug", Keys: []string{"--debug", "-D"}, Exactly: -1,
 			Description: "Set debug level.",
 			Handler: func(_ []string) {
-				Log = common.NewClog(os.Stdout, nil)
+				Log = common.NewClog(os.Stdout, slog.LevelDebug, common.MaxLen(30))
 				clf.SetGlobalLogger(Log)
 				slog.SetDefault(Log)
 			}},
