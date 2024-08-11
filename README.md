@@ -1,4 +1,8 @@
 # list
+
+> [!IMPORTANT]
+> This tool is awaiting complete rebuild (4th full rewrite) as [blume](../../../blume) contains much of the logic defined here and in [ls](../../../ls) but with better defined logic and higher consistency.
+
 ## Overview 
 `list` is a directory traversal program with built in searching, filtering, and sorting functionalities. 
 
